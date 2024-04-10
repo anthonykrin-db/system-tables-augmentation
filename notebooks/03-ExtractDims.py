@@ -21,6 +21,43 @@ from delta.tables import *
 
 # COMMAND ----------
 
+# DBTITLE 1,Jobs
+import json
+import pandas as pd
+import requests
+
+response = requests.get(JOBS_URL, headers=AUTH_HEADER)
+
+if response.status_code != 200:
+  raise Exception(response.text)
+response_json = response.json()
+
+data=[]
+while response_json["jobs"]:
+  data.append(response_json["jobs"])
+
+  next_page_token = None
+  if "next_page_token" in response_json:
+    next_page_token=response_json["next_page_token"]
+    url=f'{JOBS_URL}?page_token={next_page_token}'
+    #print("Calling: {}".format(url))
+    response = requests.get(url, headers=AUTH_HEADER)
+    #print(response)
+    response_json = response.json()
+  else:
+    break
+
+combined_df = json_documents_combined_panda(data,["settings"])
+dump_pandas_info(combined_df)
+
+# print("parsed_json: {}".format(parsed_json))
+clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+
+#print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
+clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOBS_TABLE_NAME)
+
+# COMMAND ----------
+
 # DBTITLE 1,Settings
 spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled","true") # needed for query history API
 spark.sql("SET spark.databricks.delta.properties.defaults.minReaderVersion = 2") # needed for workspace API
@@ -170,29 +207,6 @@ clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", curren
 clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + DASHBOARDS_TABLE_NAME)
 
 
-
-# COMMAND ----------
-
-# DBTITLE 1,Jobs
-import json
-import pandas as pd
-
-response = requests.get(JOBS_URL, headers=AUTH_HEADER)
-
-if response.status_code != 200:
-  raise Exception(response.text)
-response_json = response.json()
-
-
-if "jobs" in response_json:
-  combined_df = json_documents_combined_panda(response_json["jobs"],["settings"])
-  dump_pandas_info(combined_df)
-
-  # print("parsed_json: {}".format(parsed_json))
-  clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
-
-  ##print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
-  clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOBS_TABLE_NAME)
 
 # COMMAND ----------
 

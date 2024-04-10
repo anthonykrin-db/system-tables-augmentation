@@ -2,6 +2,11 @@
 # MAGIC %md
 # MAGIC #System table augmentation
 # MAGIC
+# MAGIC ## Permissions
+# MAGIC
+# MAGIC Note that this solution uses Databricks APIs to retrieve data. 
+# MAGIC
+# MAGIC
 # MAGIC ## Configuration
 # MAGIC
 # MAGIC Edit these entries in <b>00_Config</b>
