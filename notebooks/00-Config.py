@@ -10,9 +10,11 @@ DASHBOARDS_URL = "{0}/api/2.0/preview/sql/dashboards".format(WORKSPACE_HOST) ## 
 WORKSPACE_OBJECTS_URL = "{0}/api/2.0/workspace/list".format(WORKSPACE_HOST)
 INSTANCE_POOLS_URL = "{0}/api/2.0/instance-pools/list".format(WORKSPACE_HOST)
 DLT_PIPELINES_URL = "{0}/api/2.0/pipelines".format(WORKSPACE_HOST)
+JOB_RUNS_URL = "{0}/api/2.1/jobs/runs/list".format(WORKSPACE_HOST) 
 
 MAX_RESULTS_PER_PAGE = 1000
-MAX_PAGES_PER_RUN = 500
+# TODO: Make thos larger
+MAX_PAGES_PER_RUN = 100
 PAGE_SIZE = 250 # 250 is the max
 
 # COMMAND ----------
@@ -27,7 +29,7 @@ PAGE_SIZE = 250 # 250 is the max
 #Azure KeyVault
 #AUTH_HEADER = {"Authorization" : "Bearer " + dbutils.secrets.get(scope = "<scope-name>", key = "<key-name>")}
 #Naughty way
-AUTH_HEADER = {"Authorization" : "Bearer " + "your_token_here"}
+AUTH_HEADER = {"Authorization" : "Bearer " + "<token_here>"}
 
 # COMMAND ----------
 
@@ -41,6 +43,7 @@ CLUSTERS_TABLE_NAME = SCHEMA_NAME+".clusters"
 WORKSPACE_OBJECTS_TABLE_NAME = SCHEMA_NAME+".workspace_objects"
 INSTANCE_POOLS_TABLE_NAME = SCHEMA_NAME+".instance_pools"
 DLT_PIPELINES_TABLE_NAME = SCHEMA_NAME+".dlt_pipelines"
+JOB_RUNS_TABLE_NAME = SCHEMA_NAME+".job_runs"
 
 # COMMAND ----------
 
