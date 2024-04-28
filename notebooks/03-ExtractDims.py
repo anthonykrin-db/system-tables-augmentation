@@ -1,11 +1,4 @@
 # Databricks notebook source
-# MAGIC %md
-# MAGIC ## TODO
-# MAGIC ### add since date
-# MAGIC ### add merge existing
-
-# COMMAND ----------
-
 # MAGIC %run ./00-Config
 
 # COMMAND ----------
@@ -207,7 +200,7 @@ while response_json["statuses"]:
     break
 
 if len(data)>0:
-  combined_df = json_documents_combined_panda(data,[],["latest_updates"],[])
+  combined_df = json_documents_combined_panda(data,[],["latest_updates"])
   dump_pandas_info(combined_df)
   # print("parsed_json: {}".format(parsed_json))
   dlt_pipelines = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
