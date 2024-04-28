@@ -1,10 +1,15 @@
 # Databricks notebook source
-def json_documents_combined_panda(json_docs, explode_keys=[], exclude_keys=[], include_keys=[]):
+# MAGIC %md
+# MAGIC ### Loading public methods
+
+# COMMAND ----------
+
+def json_documents_combined_panda(json_docs, explode_keys=[], exclude_keys=[]):
     # Iterate over the outer array in the JSON data
-    dfs = json_documents_to_pandas(json_docs, explode_keys, exclude_keys, include_keys)
+    dfs = json_documents_to_pandas(json_docs, explode_keys, exclude_keys)
     return combine_dataframes(dfs)
 
-def json_documents_to_pandas(json_docs, explode_keys=[], exclude_keys=[], include_keys=[]):
+def json_documents_to_pandas(json_docs, explode_keys=[], exclude_keys=[]):
     parsed_jsons = parse_documents(json_docs)
     dfs = []
     for doc in parsed_jsons:
@@ -12,28 +17,39 @@ def json_documents_to_pandas(json_docs, explode_keys=[], exclude_keys=[], includ
         if isinstance(doc, list):
             # doc is list...
             for docEl in doc:
-                dataEl = get_data(docEl, explode_keys, exclude_keys, include_keys)
+                dataEl = get_safe_json_kv(docEl, explode_keys, exclude_keys)
                 df = pd.DataFrame(dataEl)
                 dfs.append(df)
         else:
             if isinstance(doc, str):
                 # we should never be here
-                doc = parse_json(doc)
-                data = [doc]
+                data = doc
             else:
                 # fix this error: ValueError: If using all scalar values, you must pass an index
-                data = get_data(doc, explode_keys, exclude_keys, include_keys)
+                data = get_safe_json_kv(doc, explode_keys, exclude_keys)
                 df = pd.DataFrame(data)
                 dfs.append(df)
     return dfs
 
 # COMMAND ----------
 
-def get_data(doc, explode_keys=[], exclude_keys=[], include_keys=[]):
+# DBTITLE 1,dump out panda metadata
+import pandas as pd
+
+def dump_pandas_info(df):
+  print("Number of rows:", df.shape[0])
+  print("\nColumn metadata:")
+  df.info()
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### Loading private methods
+
+# COMMAND ----------
+
+def get_safe_json_kv(doc, explode_keys=[], exclude_keys=[]):
     data = {}
-    if not isinstance(doc,dict):
-        print("Reparsing doc: {}".format(doc))
-        doc=parse_json(doc)
 
     if isinstance(doc, dict):
         for key, value in doc.items():
@@ -57,75 +73,9 @@ def get_data(doc, explode_keys=[], exclude_keys=[], include_keys=[]):
     else:
         print("Doc is not a dict: {}".format(doc))
         data["default"] = doc
+
     return data
 
-
-# COMMAND ----------
-
-def parse_json(json_string):
-    try:
-        # Remove trailing commas
-        json_string = re.sub(r',\s*}', '}', json_string)
-        json_string = re.sub(r',\s*]', ']', json_string)
-
-        # Remove comments
-        json_string = re.sub(r'//.*', '', json_string)
-        json_string = re.sub(r'/\*.*?\*/', '', json_string, flags=re.DOTALL)
-        data = json.loads(json_string)
-        return data
-    except json.JSONDecodeError as e:
-        print(f"JSON Decoding Error: {str(e)}")
-        print(f"Error message: {e.msg}")
-        print(f"Error occurred at line {e.lineno}, column {e.colno}")
-        return json_string
-    except Exception as e:
-        print(f"Unexpected Error: {str(e)}")
-        return json_string
-
-# COMMAND ----------
-
-def make_sdf_safe_value(value):
-    if isinstance(value, bool):
-        # If the value is a boolean, cast it to lowercase string
-        return str(value).lower()
-    elif isinstance(value, (int,float)):
-        return value
-    else:
-        return str(value)
-
-
-# COMMAND ----------
-
-
-def pretty_print_dataframe(df):
-    # Convert the DataFrame to JSON
-    json_data = df.to_json(orient='records')
-    
-    # Parse the JSON data
-    parsed_json = json.loads(json_data)
-    
-    # Pretty print the JSON data
-    pretty_json = json.dumps(parsed_json, indent=4)
-    
-    print(pretty_json)
-
-# COMMAND ----------
-
-# DBTITLE 1,Check if spark can read the table
-def check_table_exist(db_tbl_name):
-    table_exist = False
-    try:
-        spark.read.table(db_tbl_name) # Check if spark can read the table
-        table_exist = True        
-    except:
-        pass
-    return table_exist
-
-# COMMAND ----------
-
-# DBTITLE 1,Current time in milliseconds
-def current_time_in_millis():
-    return round(time.time() * 1000)
 
 # COMMAND ----------
 
@@ -146,10 +96,39 @@ def make_spark_column_name(col):
 
 # COMMAND ----------
 
+import math
+
+def make_sdf_safe_value(value):
+    if isinstance(value, bool):
+        # If the value is a boolean, cast it to lowercase string
+        return str(value).lower()
+    elif isinstance(value, (int,float)):
+        if math.isnan(value):
+            return None
+        return value
+    elif isinstance(value, str):
+        if value.strip() == "":
+            return None
+        return value
+    elif isinstance(value, (list,dict)):
+        # Convert Python to JSON value
+        return json.dumps(value)
+    else:
+        return value
+
+
+# COMMAND ----------
+
 import pandas as pd
 import re
 from collections import Counter
 import numpy as np
+
+def replace_empty_string(value):
+    if pd.isna(value) or (isinstance(value, str) and (value.strip() == "" or value.strip()=="nan")):
+        return None
+    return value
+
 
 def combine_dataframes(dfs, ignore_index=False):
     """
@@ -206,7 +185,7 @@ def combine_dataframes(dfs, ignore_index=False):
 
     # Coalescing data types
     coalesced_df = coalesce_column_types(combined_df)
-    return coalesced_df
+    return coalesced_df.applymap(replace_empty_string)
 
 
 # COMMAND ----------
@@ -233,7 +212,7 @@ def coalesce_column_types(df):
         # Find the most complex data type in the column
         most_complex_type = max(column_types, key=lambda x: type_complexity.get(x, 0))
         
-        print("Column: {}, types: {}, most complex types: {}".format(column,column_types,most_complex_type))
+        #print("Column: {}, types: {}, most complex types: {}".format(column,column_types,most_complex_type))
 
         # Coalesce the column to the most complex data type
         if most_complex_type == int:
@@ -264,8 +243,9 @@ def parse_documents(json_documents):
     
     for doc in json_documents:
         results.append(parse_doc(doc))
-    
     return results
+
+#Unnest deeply nested
 
 def parse_doc(doc):
     parsed_doc = {}
@@ -276,16 +256,14 @@ def parse_doc(doc):
         for key, value in doc.items():
             if isinstance(value, bool):
                 value = str(value).lower()
-            
+            # Unnest multi-level docs
             if "." in key:
                 parts = key.split(".")
                 if len(parts) >= 2:
                     nested_key = ".".join(parts[:2])
                     remaining_key = ".".join(parts[2:])
-                    
                     if nested_key not in parsed_doc:
                         parsed_doc[nested_key] = {}
-                    
                     parsed_doc[nested_key][remaining_key] = value
             else:
                 parsed_doc[key] = value
@@ -301,29 +279,6 @@ def parse_doc(doc):
             parsed_doc = {key: parse_doc(value) for key, value in doc.items()}
     
     return parsed_doc
-
-# COMMAND ----------
-
-# DBTITLE 1,True False fix
-def get_boolean_keys(arrays):
-  # A quirk in Python's and Spark's handling of JSON booleans requires us to converting True and False to true and false
-  boolean_keys_to_convert = []
-  for array in arrays:
-    for key in array.keys():
-      if type(array[key]) is bool:
-        boolean_keys_to_convert.append(key)
-  #print(boolean_keys_to_convert)
-  return boolean_keys_to_convert
-
-# COMMAND ----------
-
-# DBTITLE 1,dump out panda metadata
-import pandas as pd
-
-def dump_pandas_info(df):
-  print("Number of rows:", df.shape[0])
-  print("\nColumn metadata:")
-  df.info()
 
 # COMMAND ----------
 

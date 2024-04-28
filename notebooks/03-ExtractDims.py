@@ -38,7 +38,6 @@ response = requests.get(JOB_RUNS_URL, headers=AUTH_HEADER)
 if response.status_code != 200:
   raise Exception(response.text)
 response_json = response.json()
-
 data=[]
 count = 0
 print("Pages: ")
@@ -59,14 +58,14 @@ while response_json is not None and "runs" in response_json:
   else:
     break
 
-combined_df = json_documents_combined_panda(data,["settings"])
+combined_df = json_documents_combined_panda(data,["settings","state","schedule"])
 dump_pandas_info(combined_df)
 
 # print("parsed_json: {}".format(parsed_json))
-clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+job_runs = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
 
 #print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
-clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOB_RUNS_TABLE_NAME)
+job_runs.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOB_RUNS_TABLE_NAME)
 
 # COMMAND ----------
 
@@ -100,14 +99,14 @@ while response_json["jobs"]:
   else:
     break
 
-combined_df = json_documents_combined_panda(data,["settings"])
+combined_df = json_documents_combined_panda(data,["settings","schedule","deployment","email_notifications"])
 dump_pandas_info(combined_df)
 
 # print("parsed_json: {}".format(parsed_json))
-clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+jobs = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
 
 #print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
-clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOBS_TABLE_NAME)
+jobs.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOBS_TABLE_NAME)
 
 # COMMAND ----------
 
@@ -172,10 +171,10 @@ for top_level_object in top_level_objects:
 combined_df=json_documents_combined_panda(all_objs)
 dump_pandas_info(combined_df)
 # print("parsed_json: {}".format(parsed_json))
-clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+notebooks = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
 
 ##print("Saving table: {}.{}".format(DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME))
-clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + WORKSPACE_OBJECTS_TABLE_NAME)
+notebooks.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + WORKSPACE_OBJECTS_TABLE_NAME)
 
 # COMMAND ----------
 
@@ -211,10 +210,10 @@ if len(data)>0:
   combined_df = json_documents_combined_panda(data,[],["latest_updates"],[])
   dump_pandas_info(combined_df)
   # print("parsed_json: {}".format(parsed_json))
-  clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+  dlt_pipelines = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
 
   ##print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
-  clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + DLT_PIPELINES_TABLE_NAME)
+  dlt_pipelines.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + DLT_PIPELINES_TABLE_NAME)
 else:
   print("No data")
 
@@ -254,10 +253,10 @@ combined_df = json_documents_combined_panda(data,["options"])
 dump_pandas_info(combined_df)
 
 # print("parsed_json: {}".format(parsed_json))
-clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+dashs = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
 
 ##print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
-clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + DASHBOARDS_TABLE_NAME)
+dashs.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + DASHBOARDS_TABLE_NAME)
 
 
 
@@ -276,9 +275,9 @@ response_json = response.json()
 if "instance_pools" in response_json:
   combined_df = json_documents_combined_panda(response_json["instance_pools"])
   dump_pandas_info(combined_df)
-  clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+  pools = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
   ##print("Saving table: {}.{}".format(DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME))
-  clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + INSTANCE_POOLS_TABLE_NAME)
+  pools.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + INSTANCE_POOLS_TABLE_NAME)
 
 # COMMAND ----------
 
@@ -294,7 +293,7 @@ response_json = response.json()
 
 
 if "clusters" in response_json:
-  combined_df = json_documents_combined_panda(response_json["clusters"],["driver_instance_source","azure_attributes"])
+  combined_df = json_documents_combined_panda(response_json["clusters"],["azure_attributes"])
   dump_pandas_info(combined_df)
   # print("parsed_json: {}".format(parsed_json))
   clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
@@ -318,7 +317,7 @@ response_json = response.json()
 if "warehouses" in response_json:
   combined_df = json_documents_combined_panda(response_json["warehouses"])
   dump_pandas_info(combined_df)
-  clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+  whs = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
 
   ##print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
-  clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + WAREHOUSES_TABLE_NAME)
+  whs.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + WAREHOUSES_TABLE_NAME)
