@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC ### Loading public methods
+# MAGIC `Loading public methods`
 
 # COMMAND ----------
 
@@ -44,7 +44,7 @@ def dump_pandas_info(df):
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### Loading private methods
+# MAGIC `Loading private methods`
 
 # COMMAND ----------
 
