@@ -97,13 +97,16 @@ while response_json is not None and "runs" in response_json:
 # extract tasks
 for job_run_batch_json in job_runs_json:
   for job_run_json in job_run_batch_json:
-    print("JOB RUN: ",job_run_json)
+    #print("JOB RUN: ",job_run_json)
     task_index=0
-    for task_json in job_run_json["tasks"]:
-      task_json["job_id"]=job_run_json["job_id"]
-      task_index=task_index+1
-      task_json["task_index"]=task_index
-      tasks_json.append(task_json)
+    if "tasks" in job_run_json:
+      for task_json in job_run_json["tasks"]:
+        task_json["job_id"]=job_run_json["job_id"]
+        task_index=task_index+1
+        task_json["task_index"]=task_index
+        tasks_json.append(task_json)
+    else:
+      print("NO MORE TASKS FOR JOB_ID: {}".format(job_run_json["job_id"]))
 
 ###################################################
 # write job runs
