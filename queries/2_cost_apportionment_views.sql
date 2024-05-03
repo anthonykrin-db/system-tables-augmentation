@@ -4,13 +4,15 @@
 -- intermediary query 1
 CREATE OR REPLACE VIEW akrinsky_dbsql_logging.finops.v_shared_cluster_job_cost AS 
     -- cost of shared clusters that are involved in running jobs
+    SELECT COUNT(*) CNT FROM (
+
     SELECT 
     jr.creator_user_name AS job_run_creator, 
     w.workspace_id, 
     w.workspace_name,
     jrt.cluster_id, 
     c.usage_date,
-    j.name AS job_name,
+    --j.name AS job_name,
     jr.result_state,
     SUM(c.est_dbu_cost) AS cluster_cost, 
     SUM(jrt.execution_duration) AS task_exec_duration
@@ -19,14 +21,17 @@ CREATE OR REPLACE VIEW akrinsky_dbsql_logging.finops.v_shared_cluster_job_cost A
       on (c.usage_metadata["cluster_id"]=jrt.cluster_id)
     INNER JOIN akrinsky_dbsql_logging.finops.v_job_runs jr 
       on (jr.run_id=jrt.run_id) 
-    INNER JOIN akrinsky_dbsql_logging.finops.v_jobs j
-      on (jr.job_id=j.job_id) 
+    --INNER JOIN akrinsky_dbsql_logging.finops.v_jobs j
+    --  on (jrt.job_id=j.job_id) 
     INNER JOIN akrinsky_dbsql_logging.finops.v_workspaces w 
       on (c.workspace_id=w.workspace_id)
     WHERE c.usage_date >= DATE_SUB(CURRENT_DATE(), 30)
     AND DATE(FROM_UNIXTIME(jrt.start_time / 1000)) = c.usage_date 
     GROUP BY jr.creator_user_name, jrt.cluster_id,c.usage_date, w.workspace_id, 
-    w.workspace_name,j.name,jr.result_state;
+    w.workspace_name,jr.result_state
+    --,j.name
+
+    )
 
 -- intermediary query 2
 CREATE OR REPLACE VIEW akrinsky_dbsql_logging.finops.v_shared_cluster_jobs_daily_totals AS 

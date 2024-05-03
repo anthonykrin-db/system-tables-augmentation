@@ -21,6 +21,47 @@ from delta.tables import *
 
 # COMMAND ----------
 
+# DBTITLE 1,Jobs
+import json
+import pandas as pd
+import requests
+
+response = requests.get(JOBS_URL, headers=AUTH_HEADER)
+
+if response.status_code != 200:
+  raise Exception(response.text)
+response_json = response.json()
+
+data=[]
+count=0
+while response_json["jobs"]:
+  data.append(response_json["jobs"])
+  count=count+1
+  if (MAX_PAGES_PER_RUN<count):
+    print("Reached max number of pages")
+    break
+  next_page_token = None
+  if "next_page_token" in response_json:
+    next_page_token=response_json["next_page_token"]
+    url=f'{JOBS_URL}?page_token={next_page_token}'
+    #print("Calling: {}".format(url))
+    response = requests.get(url, headers=AUTH_HEADER)
+    #print(response)
+    response_json = response.json()
+  else:
+    break
+
+combined_df = json_documents_combined_panda(data,["settings","schedule","deployment","email_notifications"])
+dump_pandas_info(combined_df)
+
+# print("parsed_json: {}".format(parsed_json))
+jobs = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+
+#print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
+jobs.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOBS_TABLE_NAME)
+
+# COMMAND ----------
+
 # DBTITLE 1,Job Run
 import json
 import pandas as pd
@@ -84,47 +125,6 @@ job_run_tasks.write.format("delta").option("overwriteSchema", "true").mode("over
 
 
 
-
-# COMMAND ----------
-
-# DBTITLE 1,Jobs
-import json
-import pandas as pd
-import requests
-
-response = requests.get(JOBS_URL, headers=AUTH_HEADER)
-
-if response.status_code != 200:
-  raise Exception(response.text)
-response_json = response.json()
-
-data=[]
-count=0
-while response_json["jobs"]:
-  data.append(response_json["jobs"])
-  count=count+1
-  if (MAX_PAGES_PER_RUN<count):
-    print("Reached max number of pages")
-    break
-  next_page_token = None
-  if "next_page_token" in response_json:
-    next_page_token=response_json["next_page_token"]
-    url=f'{JOBS_URL}?page_token={next_page_token}'
-    #print("Calling: {}".format(url))
-    response = requests.get(url, headers=AUTH_HEADER)
-    #print(response)
-    response_json = response.json()
-  else:
-    break
-
-combined_df = json_documents_combined_panda(data,["settings","schedule","deployment","email_notifications"])
-dump_pandas_info(combined_df)
-
-# print("parsed_json: {}".format(parsed_json))
-jobs = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
-
-#print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
-jobs.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOBS_TABLE_NAME)
 
 # COMMAND ----------
 

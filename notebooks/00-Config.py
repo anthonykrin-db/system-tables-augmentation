@@ -14,7 +14,7 @@ JOB_RUNS_URL = "{0}/api/2.1/jobs/runs/list".format(WORKSPACE_HOST)
 
 MAX_RESULTS_PER_PAGE = 1000
 # TODO: Make thos larger
-MAX_PAGES_PER_RUN = 100
+MAX_PAGES_PER_RUN = 1000
 PAGE_SIZE = 250 # 250 is the max
 
 # COMMAND ----------
@@ -27,15 +27,17 @@ PAGE_SIZE = 250 # 250 is the max
 #Databricks secrets API
 #AUTH_HEADER = {"Authorization" : "Bearer " + spark.conf.get("spark.pat_token")}
 #Azure KeyVault
-#AUTH_HEADER = {"Authorization" : "Bearer " + dbutils.secrets.get(scope = "<scope-name>", key = "<key-name>")}
+AUTH_HEADER = {"Authorization" : "Bearer " + dbutils.secrets.get(scope = "hls_demo_secret_scope", key = "fieldeng-pat-token")}
 #Naughty way
-AUTH_HEADER = {"Authorization" : "Bearer " + "<token_here>"}
+#AUTH_HEADER = {"Authorization" : "Bearer " + "<pat_token>"}
+print(AUTH_HEADER)
+# Expect: {'Authorization': 'Bearer [REDACTED]'}
 
 # COMMAND ----------
 
 # DBTITLE 1,Database and Table Config
 DATABASE_NAME = "akrinsky_dbsql_logging"
-SCHEMA_NAME = "tacklebox"
+SCHEMA_NAME = "finops"
 WAREHOUSES_TABLE_NAME = SCHEMA_NAME+".warehouses"
 JOBS_TABLE_NAME = SCHEMA_NAME+".jobs"
 DASHBOARDS_TABLE_NAME = SCHEMA_NAME+".dashboards_preview"
