@@ -77,7 +77,9 @@ tasks_json=[]
 count = 0
 print("Pages: ")
 while response_json is not None and "runs" in response_json:
-  job_runs_json.append(response_json["runs"])
+  for job_run_json in response_json["runs"]:
+    job_runs_json.append(job_run_json)
+
   next_page_token = None
   count = count+1
   if (MAX_PAGES_PER_RUN<count):
@@ -95,18 +97,17 @@ while response_json is not None and "runs" in response_json:
 
 ###################################################
 # extract tasks
-for job_run_batch_json in job_runs_json:
-  for job_run_json in job_run_batch_json:
-    #print("JOB RUN: ",job_run_json)
-    task_index=0
+for job_run_json in job_runs_json:
+    task_index = 0
     if "tasks" in job_run_json:
-      for task_json in job_run_json["tasks"]:
-        task_json["job_id"]=job_run_json["job_id"]
-        task_index=task_index+1
-        task_json["task_index"]=task_index
-        tasks_json.append(task_json)
+        for task_json in job_run_json["tasks"]:
+            task_json["job_id"] = job_run_json["job_id"]
+            task_index = task_index + 1
+            task_json["task_index"] = task_index
+            tasks_json.append(task_json)
     else:
-      print("NO MORE TASKS FOR JOB_ID: {}".format(job_run_json["job_id"]))
+        print("No tasks for job run: {}".format(job_run_json["run_id"]))
+
 
 ###################################################
 # write job runs
