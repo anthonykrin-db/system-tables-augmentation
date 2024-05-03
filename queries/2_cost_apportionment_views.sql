@@ -59,7 +59,9 @@ SELECT creator_duration.job_run_creator,
 creator_duration.usage_date,
 creator_duration.cluster_id,
 -- (sum of creator task duration) / (total of task duration on cluster)
-sum(creator_duration.day_cluster_creator_task_exec_duration)/min(cluster_cost_duration.day_cluster_task_exec_duration) as exec_duration_cluster_pct,
+sum(creator_duration.day_cluster_creator_task_exec_duration) creator_exec_duration,
+min(cluster_cost_duration.day_cluster_task_exec_duration) cluster_exec_duration,
+creator_exec_duration/cluster_exec_duration as exec_duration_cluster_pct,
 min(cluster_cost_duration.day_cluster_est_dbu_cost)*exec_duration_cluster_pct as exec_duration_weighted_cluster_cost
 FROM akrinsky_dbsql_logging.finops.v_shared_cluster_creator_job_duration creator_duration
 INNER JOIN akrinsky_dbsql_logging.finops.v_shared_cluster_job_duration_cost AS cluster_cost_duration

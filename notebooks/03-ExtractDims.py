@@ -102,6 +102,7 @@ for job_run_json in job_runs_json:
     if "tasks" in job_run_json:
         for task_json in job_run_json["tasks"]:
             task_json["job_id"] = job_run_json["job_id"]
+            task_json["run_id"] = job_run_json["run_id"]
             task_index = task_index + 1
             task_json["task_index"] = task_index
             tasks_json.append(task_json)
