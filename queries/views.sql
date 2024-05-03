@@ -1,3 +1,4 @@
+-- CTRL-SHIFT-ENTER to run a selected fragment
 -- v_system_usage_cost (start here)
 CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_system_usage_cost AS
 SELECT usage.custom_tags, usage.usage_metadata, usage.usage_quantity, list_prices.pricing["default"] list_cost, usage_date, usage.sku_name, workspace_id
@@ -13,7 +14,7 @@ FROM system.billing.usage usage
 CREATE OR REPLACE VIEW akrinsky_dbsql_logging.finops.v_cost_byjobrunner_apportionment AS 
 SELECT j.creator_user_name AS job_runner, SUM(list_cost) AS job_cost, MIN(agg_job_cost.total_cost) AS all_job_cost
 FROM akrinsky_dbsql_logging.finops.v_system_usage_cost
-INNER JOIN akrinsky_dbsql_logging.finops.job_runs j 
+INNER JOIN akrinsky_dbsql_logging.finops.v_job_runs j 
 ON j.run_id = usage_metadata["job_run_id"]
 INNER JOIN 
   (

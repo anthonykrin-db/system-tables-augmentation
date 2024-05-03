@@ -26,16 +26,17 @@ import json
 import pandas as pd
 import requests
 
-response = requests.get(JOB_RUNS_URL, headers=AUTH_HEADER)
+response = requests.get(JOB_RUNS_URL+"?expand_tasks=true", headers=AUTH_HEADER)
 
 if response.status_code != 200:
   raise Exception(response.text)
 response_json = response.json()
-data=[]
+job_runs_json=[]
+tasks_json=[]
 count = 0
 print("Pages: ")
 while response_json is not None and "runs" in response_json:
-  data.append(response_json["runs"])
+  job_runs_json.append(response_json["runs"])
   next_page_token = None
   count = count+1
   if (MAX_PAGES_PER_RUN<count):
@@ -43,7 +44,7 @@ while response_json is not None and "runs" in response_json:
     break
   if "next_page_token" in response_json:
     next_page_token=response_json["next_page_token"]
-    url=f'{JOB_RUNS_URL}?page_token={next_page_token}'
+    url=f'{JOB_RUNS_URL}?expand_tasks=true&page_token={next_page_token}'
     #print("Calling: {}".format(url))
     response = requests.get(url, headers=AUTH_HEADER)
     #print(response)
@@ -51,14 +52,38 @@ while response_json is not None and "runs" in response_json:
   else:
     break
 
-combined_df = json_documents_combined_panda(data,["settings","state","schedule"])
-dump_pandas_info(combined_df)
+###################################################
+# extract tasks
+for job_run_batch_json in job_runs_json:
+  for job_run_json in job_run_batch_json:
+    print("JOB RUN: ",job_run_json)
+    task_index=0
+    for task_json in job_run_json["tasks"]:
+      task_json["job_id"]=job_run_json["job_id"]
+      task_index=task_index+1
+      task_json["task_index"]=task_index
+      tasks_json.append(task_json)
 
-# print("parsed_json: {}".format(parsed_json))
-job_runs = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+###################################################
+# write job runs
+runs_combined_df = json_documents_combined_panda(job_runs_json,["settings","state","schedule"],["tasks"])
+dump_pandas_info(runs_combined_df)
 
-#print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
+job_runs = spark.createDataFrame(runs_combined_df).withColumn("snapshot_time", current_timestamp())
+
 job_runs.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOB_RUNS_TABLE_NAME)
+
+###################################################
+# write tasks
+tasks_combined_df = json_documents_combined_panda(tasks_json,["cluster_instance"],[])
+dump_pandas_info(tasks_combined_df)
+
+job_run_tasks = spark.createDataFrame(tasks_combined_df).withColumn("snapshot_time", current_timestamp())
+
+job_run_tasks.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOB_RUNS_TABLE_NAME+"_TASKS")
+
+
+
 
 # COMMAND ----------
 
@@ -215,6 +240,9 @@ else:
 # COMMAND ----------
 
 # DBTITLE 1,Dashboards
+## TODO: IMPROVE ERROR HANDLING
+
+
 ## there is no next page token with this API so will need to iterate thorough all results until we get empty results
 
 base_url = f'{DASHBOARDS_URL}/admin?page_size={PAGE_SIZE}'
