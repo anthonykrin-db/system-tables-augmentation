@@ -7,6 +7,8 @@ CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_jobs as SELECT j.* FROM 
 CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_instance_pools as SELECT p.* FROM akrinsky_dbsql_logging.finops.instance_pools p;
 CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_dlt_pipelines as SELECT d.* FROM akrinsky_dbsql_logging.finops.dlt_pipelines d;
 CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_clusters as SELECT c.* FROM akrinsky_dbsql_logging.finops.clusters c;
+CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_dashboards_preview as SELECT c.* FROM akrinsky_dbsql_logging.finops.dashboards_preview c;
+
 
 -- v_system_usage_cost (start here)
 CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_system_usage_cost AS
