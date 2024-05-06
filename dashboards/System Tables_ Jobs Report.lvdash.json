@@ -23,7 +23,7 @@
     {
       "name": "63d96b0a",
       "displayName": "job_status_by_day",
-      "query": "SELECT DATE(FROM_UNIXTIME(start_time / 1000)) day_date, result_state, COUNT(DISTINCT job_id) num_jobs, \nFROM\nfinops.system_lookups_dims.v_job_runs\ngroup by day_date, result_state\nORDER BY day_date DESC"
+      "query": "SELECT DATE(FROM_UNIXTIME(start_time / 1000)) day_date, result_state, COUNT(DISTINCT job_id) num_jobs\nFROM\nfinops.system_lookups_dims.v_job_runs\ngroup by day_date, result_state\nORDER BY day_date DESC"
     }
   ],
   "pages": [
