@@ -3,7 +3,7 @@
     {
       "name": "14087b30",
       "displayName": "shared cluster cost",
-      "query": "SELECT cluster_name,MONTH(usage_date), cluster_access_mode, sum(day_cluster_est_dbu_cost) est_dbu_cost , 2*est_dbu_cost as est_tot_cost \nFROM akrinsky_dbsql_logging.finops.v_shared_cluster_job_duration_cost\n WHERE (CASE WHEN :workspace_name = 'all' THEN 1=1 ELSE ARRAY_CONTAINS(split(lower(:workspace_name),\";\"),lower(workspace_name)) END)\n AND (CASE WHEN :cluster_name = 'all' THEN 1=1 ELSE startswith(lower(cluster_name),lower(:cluster_name)) END)\n AND MONTH(usage_date) = MONTH(:date_of_month)\n GROUP BY cluster_name , MONTH(usage_date), cluster_access_mode\n ORDER BY  cluster_name ASC",
+      "query": "SELECT cluster_name,date_trunc('MONTH',usage_date) usage_month, cluster_data_security_mode, sum(day_cluster_est_dbu_cost) est_dbu_cost , 2*est_dbu_cost as est_tot_cost \nFROM finops.system_lookups_dims.v_shared_cluster_job_duration_cost\n WHERE (CASE WHEN :workspace_name = 'all' THEN 1=1 ELSE ARRAY_CONTAINS(split(lower(:workspace_name),\";\"),lower(workspace_name)) END)\n AND (CASE WHEN :cluster_name = 'all' THEN 1=1 ELSE startswith(lower(cluster_name),lower(:cluster_name)) END)\nAND (CASE WHEN :all_time = 'all'  THEN 1=1 ELSE date_trunc('MONTH',usage_date) = date_trunc('MONTH',:date_of_month) END)\n GROUP BY cluster_name , date_trunc('MONTH',usage_date), cluster_data_security_mode\n ORDER BY  cluster_name ASC",
       "parameters": [
         {
           "displayName": "workspace_name",
@@ -49,13 +49,28 @@
               ]
             }
           }
+        },
+        {
+          "displayName": "all_time",
+          "keyword": "all_time",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "all"
+                }
+              ]
+            }
+          }
         }
       ]
     },
     {
       "name": "7883e6cc",
       "displayName": "cost by cluster",
-      "query": "SELECT sum(est_dbu_cost) est_dbu_cost , 2*sum(est_dbu_cost) as est_tot_cost, cluster_name, MONTH(usage_date) usage_month\n FROM akrinsky_dbsql_logging.finops.v_cost_bycluster\n WHERE (CASE WHEN :workspace_name = 'all' THEN 1=1 ELSE ARRAY_CONTAINS(split(lower(:workspace_name),\";\"),lower(workspace_name)) END)\n AND (CASE WHEN :cluster_name = 'all' THEN 1=1 ELSE startswith(lower(cluster_name),lower(:cluster_name)) END)\n AND MONTH(usage_date) = MONTH(:date_of_month)\n GROUP BY cluster_name , MONTH(usage_date)\n ORDER BY  cluster_name ASC",
+      "query": "SELECT sum(est_dbu_cost) est_dbu_cost , 2*sum(est_dbu_cost) as est_tot_cost, cluster_name, date_trunc('MONTH', usage_date) usage_month\n FROM finops.system_lookups_dims.v_cost_bycluster\n WHERE (CASE WHEN :workspace_name = 'all' THEN 1=1 ELSE ARRAY_CONTAINS(split(lower(:workspace_name),\";\"),lower(workspace_name)) END)\n AND (CASE WHEN :cluster_name = 'all' THEN 1=1 ELSE startswith(lower(cluster_name),lower(:cluster_name)) END)\n AND (CASE WHEN :all_time = 'all'  THEN 1=1 ELSE date_trunc('MONTH',usage_date) = date_trunc('MONTH',:date_of_month) END)\n GROUP BY cluster_name , date_trunc('MONTH', usage_date)\n ORDER BY  cluster_name ASC",
       "parameters": [
         {
           "displayName": "workspace_name",
@@ -101,13 +116,28 @@
               ]
             }
           }
+        },
+        {
+          "displayName": "all_time",
+          "keyword": "all_time",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "all"
+                }
+              ]
+            }
+          }
         }
       ]
     },
     {
       "name": "cf3dd7a4",
       "displayName": "shared cluster job cost",
-      "query": "SELECT cluster_name,job_name, workspace_name,MONTH(usage_date), cluster_access_mode, \nsum(exec_duration_weighted_cluster_cost) est_dbu_cost , 2*est_dbu_cost as est_tot_cost\nFROM akrinsky_dbsql_logging.finops.v_shared_cluster_job_duration_weighted_cost\n WHERE (CASE WHEN :workspace_name = 'all' THEN 1=1 ELSE ARRAY_CONTAINS(split(lower(:workspace_name),\";\"),lower(workspace_name)) END)\n AND (CASE WHEN :cluster_name = 'all' THEN 1=1 ELSE startswith(lower(cluster_name),lower(:cluster_name)) END)\n AND MONTH(usage_date) = MONTH(:date_of_month)\n GROUP BY cluster_name , MONTH(usage_date), cluster_access_mode,job_name,workspace_name\n ORDER BY  cluster_name ASC",
+      "query": "SELECT cluster_name,job_name, workspace_name, date_trunc('MONTH',usage_date) usage_month, cluster_data_security_mode, \nsum(exec_duration_weighted_cluster_cost) est_dbu_cost , 2*est_dbu_cost as est_tot_cost\nFROM finops.system_lookups_dims.v_shared_cluster_job_duration_weighted_cost\n WHERE (CASE WHEN :workspace_name = 'all' THEN 1=1 ELSE ARRAY_CONTAINS(split(lower(:workspace_name),\";\"),lower(workspace_name)) END)\n AND (CASE WHEN :cluster_name = 'all' THEN 1=1 ELSE startswith(lower(cluster_name),lower(:cluster_name)) END)\n AND (CASE WHEN :all_time = 'all'  THEN 1=1 ELSE date_trunc('MONTH',usage_date) = date_trunc('MONTH',:date_of_month) END)\n GROUP BY cluster_name , date_trunc('MONTH',usage_date), cluster_data_security_mode,job_name,workspace_name\n ORDER BY  cluster_name ASC",
       "parameters": [
         {
           "displayName": "workspace_name",
@@ -153,16 +183,46 @@
               ]
             }
           }
+        },
+        {
+          "displayName": "all_time",
+          "keyword": "all_time",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "all"
+                }
+              ]
+            }
+          }
         }
       ]
     },
     {
       "name": "ffda2236",
       "displayName": "cost by workspace",
-      "query": "SELECT sum(est_dbu_cost) est_dbu_cost , 2*sum(est_dbu_cost) as est_tot_cost,  workspace_name, MONTH(usage_date) usage_month\n FROM akrinsky_dbsql_logging.finops.v_cost_byworkspace\n WHERE (CASE WHEN :workspace_name = 'all' THEN 1=1 ELSE ARRAY_CONTAINS(split(lower(:workspace_name),\";\"),lower(workspace_name)) END)\n AND MONTH(usage_date) = MONTH(:date_of_month)\n GROUP BY workspace_name , MONTH(usage_date)\n ORDER BY  workspace_name ASC\n",
+      "query": "SELECT sum(est_dbu_cost) est_dbu_cost , 2*sum(est_dbu_cost) as est_tot_cost,  workspace_name, date_trunc('MONTH', usage_date) usage_month\n FROM finops.system_lookups_dims.v_cost_byworkspace\n WHERE (CASE WHEN :workspace_name = 'all' THEN 1=1 ELSE ARRAY_CONTAINS(split(lower(:workspace_name),\";\"),lower(workspace_name)) END)\n AND (CASE WHEN :all_time = 'all'  THEN 1=1 ELSE date_trunc('MONTH',usage_date) = date_trunc('MONTH',:date_of_month) END)\n GROUP BY workspace_name , date_trunc('MONTH', usage_date)\n ORDER BY  workspace_name ASC\n",
       "parameters": [
         {
-          "displayName": "workspace_name",
+          "displayName": "Month",
+          "keyword": "date_of_month",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2024-05-06T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "Workspace",
           "keyword": "workspace_name",
           "dataType": "STRING",
           "defaultSelection": {
@@ -177,15 +237,15 @@
           }
         },
         {
-          "displayName": "date_of_month",
-          "keyword": "date_of_month",
-          "dataType": "DATE",
+          "displayName": "'all' for All Time",
+          "keyword": "all_time",
+          "dataType": "STRING",
           "defaultSelection": {
             "values": {
-              "dataType": "DATE",
+              "dataType": "STRING",
               "values": [
                 {
-                  "value": "2024-05-06T00:00:00.000"
+                  "value": "all"
                 }
               ]
             }
@@ -209,10 +269,6 @@
                   "datasetName": "cf3dd7a4",
                   "fields": [
                     {
-                      "name": "cluster_access_mode",
-                      "expression": "`cluster_access_mode`"
-                    },
-                    {
                       "name": "cluster_name",
                       "expression": "`cluster_name`"
                     },
@@ -227,10 +283,6 @@
                     {
                       "name": "job_name",
                       "expression": "`job_name`"
-                    },
-                    {
-                      "name": "month(usage_date)",
-                      "expression": "`month(usage_date)`"
                     },
                     {
                       "name": "workspace_name",
@@ -272,61 +324,6 @@
                     "useMonospaceFont": false,
                     "preserveWhitespace": false,
                     "displayName": "job_name"
-                  },
-                  {
-                    "fieldName": "month(usage_date)",
-                    "numberFormat": "0",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "imageUrlTemplate": "{{ @ }}",
-                    "imageTitleTemplate": "{{ @ }}",
-                    "imageWidth": "",
-                    "imageHeight": "",
-                    "linkUrlTemplate": "{{ @ }}",
-                    "linkTextTemplate": "{{ @ }}",
-                    "linkTitleTemplate": "{{ @ }}",
-                    "linkOpenInNewTab": true,
-                    "type": "integer",
-                    "displayAs": "number",
-                    "visible": true,
-                    "order": 1,
-                    "title": "month(usage_date)",
-                    "allowSearch": false,
-                    "alignContent": "right",
-                    "allowHTML": false,
-                    "highlightLinks": false,
-                    "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "month(usage_date)"
-                  },
-                  {
-                    "fieldName": "cluster_access_mode",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "imageUrlTemplate": "{{ @ }}",
-                    "imageTitleTemplate": "{{ @ }}",
-                    "imageWidth": "",
-                    "imageHeight": "",
-                    "linkUrlTemplate": "{{ @ }}",
-                    "linkTextTemplate": "{{ @ }}",
-                    "linkTitleTemplate": "{{ @ }}",
-                    "linkOpenInNewTab": true,
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 2,
-                    "title": "cluster_access_mode",
-                    "allowSearch": false,
-                    "alignContent": "left",
-                    "allowHTML": false,
-                    "highlightLinks": false,
-                    "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "cluster_access_mode"
                   },
                   {
                     "fieldName": "est_dbu_cost",
@@ -440,7 +437,59 @@
                   }
                 ]
               },
-              "invisibleColumns": [],
+              "invisibleColumns": [
+                {
+                  "dateTimeFormat": "YYYY-MM-DD HH:mm:ss.SSS",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "usage_month",
+                  "type": "datetime",
+                  "displayAs": "datetime",
+                  "order": 100003,
+                  "title": "usage_month",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "cluster_data_security_mode",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100004,
+                  "title": "cluster_data_security_mode",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
               "allowHTMLByDefault": false,
               "itemsPerPage": 25,
               "paginationSize": "default",
@@ -450,9 +499,85 @@
           },
           "position": {
             "x": 0,
-            "y": 12,
+            "y": 14,
             "width": 6,
             "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "0e3da29a",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_cluster_name",
+                "query": {
+                  "datasetName": "7883e6cc",
+                  "parameters": [
+                    {
+                      "name": "cluster_name",
+                      "keyword": "cluster_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b63428611778f16e02fd877810b_cluster_name",
+                "query": {
+                  "datasetName": "14087b30",
+                  "parameters": [
+                    {
+                      "name": "cluster_name",
+                      "keyword": "cluster_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b6354aa1aa8bc274890265f8eff_cluster_name",
+                "query": {
+                  "datasetName": "cf3dd7a4",
+                  "parameters": [
+                    {
+                      "name": "cluster_name",
+                      "keyword": "cluster_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "cluster_name",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_cluster_name"
+                  },
+                  {
+                    "parameterName": "cluster_name",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b63428611778f16e02fd877810b_cluster_name"
+                  },
+                  {
+                    "parameterName": "cluster_name",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b6354aa1aa8bc274890265f8eff_cluster_name"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cluster"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 1,
+            "width": 2,
+            "height": 1
           }
         },
         {
@@ -465,10 +590,6 @@
                   "datasetName": "14087b30",
                   "fields": [
                     {
-                      "name": "cluster_access_mode",
-                      "expression": "`cluster_access_mode`"
-                    },
-                    {
                       "name": "cluster_name",
                       "expression": "`cluster_name`"
                     },
@@ -479,10 +600,6 @@
                     {
                       "name": "est_tot_cost",
                       "expression": "`est_tot_cost`"
-                    },
-                    {
-                      "name": "month(usage_date)",
-                      "expression": "`month(usage_date)`"
                     }
                   ],
                   "disaggregated": true
@@ -520,61 +637,6 @@
                     "useMonospaceFont": false,
                     "preserveWhitespace": false,
                     "displayName": "cluster_name"
-                  },
-                  {
-                    "fieldName": "cluster_access_mode",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "imageUrlTemplate": "{{ @ }}",
-                    "imageTitleTemplate": "{{ @ }}",
-                    "imageWidth": "",
-                    "imageHeight": "",
-                    "linkUrlTemplate": "{{ @ }}",
-                    "linkTextTemplate": "{{ @ }}",
-                    "linkTitleTemplate": "{{ @ }}",
-                    "linkOpenInNewTab": true,
-                    "type": "string",
-                    "displayAs": "string",
-                    "visible": true,
-                    "order": 1,
-                    "title": "cluster_access_mode",
-                    "allowSearch": false,
-                    "alignContent": "left",
-                    "allowHTML": false,
-                    "highlightLinks": false,
-                    "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "cluster_access_mode"
-                  },
-                  {
-                    "fieldName": "month(usage_date)",
-                    "numberFormat": "0",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "imageUrlTemplate": "{{ @ }}",
-                    "imageTitleTemplate": "{{ @ }}",
-                    "imageWidth": "",
-                    "imageHeight": "",
-                    "linkUrlTemplate": "{{ @ }}",
-                    "linkTextTemplate": "{{ @ }}",
-                    "linkTitleTemplate": "{{ @ }}",
-                    "linkOpenInNewTab": true,
-                    "type": "integer",
-                    "displayAs": "number",
-                    "visible": true,
-                    "order": 2,
-                    "title": "month(usage_date)",
-                    "allowSearch": false,
-                    "alignContent": "right",
-                    "allowHTML": false,
-                    "highlightLinks": false,
-                    "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "month(usage_date)"
                   },
                   {
                     "fieldName": "est_dbu_cost",
@@ -632,7 +694,59 @@
                   }
                 ]
               },
-              "invisibleColumns": [],
+              "invisibleColumns": [
+                {
+                  "dateTimeFormat": "YYYY-MM-DD HH:mm:ss.SSS",
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "usage_month",
+                  "type": "datetime",
+                  "displayAs": "datetime",
+                  "order": 100001,
+                  "title": "usage_month",
+                  "allowSearch": false,
+                  "alignContent": "right",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                },
+                {
+                  "booleanValues": [
+                    "false",
+                    "true"
+                  ],
+                  "imageUrlTemplate": "{{ @ }}",
+                  "imageTitleTemplate": "{{ @ }}",
+                  "imageWidth": "",
+                  "imageHeight": "",
+                  "linkUrlTemplate": "{{ @ }}",
+                  "linkTextTemplate": "{{ @ }}",
+                  "linkTitleTemplate": "{{ @ }}",
+                  "linkOpenInNewTab": true,
+                  "name": "cluster_data_security_mode",
+                  "type": "string",
+                  "displayAs": "string",
+                  "order": 100002,
+                  "title": "cluster_data_security_mode",
+                  "allowSearch": false,
+                  "alignContent": "left",
+                  "allowHTML": false,
+                  "highlightLinks": false,
+                  "useMonospaceFont": false,
+                  "preserveWhitespace": false
+                }
+              ],
               "allowHTMLByDefault": false,
               "itemsPerPage": 25,
               "paginationSize": "default",
@@ -642,9 +756,161 @@
           },
           "position": {
             "x": 3,
-            "y": 6,
+            "y": 8,
             "width": 3,
             "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "583a9d7b",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b62e6f812f9898fc72f9142fc82_date_of_month",
+                "query": {
+                  "datasetName": "ffda2236",
+                  "parameters": [
+                    {
+                      "name": "date_of_month",
+                      "keyword": "date_of_month"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_date_of_month",
+                "query": {
+                  "datasetName": "7883e6cc",
+                  "parameters": [
+                    {
+                      "name": "date_of_month",
+                      "keyword": "date_of_month"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "date_of_month",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b62e6f812f9898fc72f9142fc82_date_of_month"
+                  },
+                  {
+                    "parameterName": "date_of_month",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_date_of_month"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Month"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "6f16e076",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b62e6f812f9898fc72f9142fc82_all_time",
+                "query": {
+                  "datasetName": "ffda2236",
+                  "parameters": [
+                    {
+                      "name": "all_time",
+                      "keyword": "all_time"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_all_time",
+                "query": {
+                  "datasetName": "7883e6cc",
+                  "parameters": [
+                    {
+                      "name": "all_time",
+                      "keyword": "all_time"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b63428611778f16e02fd877810b_all_time",
+                "query": {
+                  "datasetName": "14087b30",
+                  "parameters": [
+                    {
+                      "name": "all_time",
+                      "keyword": "all_time"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b6354aa1aa8bc274890265f8eff_all_time",
+                "query": {
+                  "datasetName": "cf3dd7a4",
+                  "parameters": [
+                    {
+                      "name": "all_time",
+                      "keyword": "all_time"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "all_time",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b62e6f812f9898fc72f9142fc82_all_time"
+                  },
+                  {
+                    "parameterName": "all_time",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_all_time"
+                  },
+                  {
+                    "parameterName": "all_time",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b63428611778f16e02fd877810b_all_time"
+                  },
+                  {
+                    "parameterName": "all_time",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b6354aa1aa8bc274890265f8eff_all_time"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "\"all\" for All Time"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 1
           }
         },
         {
@@ -803,7 +1069,7 @@
           },
           "position": {
             "x": 0,
-            "y": 6,
+            "y": 8,
             "width": 3,
             "height": 6
           }
@@ -863,7 +1129,7 @@
           },
           "position": {
             "x": 0,
-            "y": 0,
+            "y": 2,
             "width": 3,
             "height": 6
           }
@@ -924,9 +1190,161 @@
           },
           "position": {
             "x": 3,
-            "y": 0,
+            "y": 2,
             "width": 3,
             "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "d477da8b",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b62e6f812f9898fc72f9142fc82_workspace_name",
+                "query": {
+                  "datasetName": "ffda2236",
+                  "parameters": [
+                    {
+                      "name": "workspace_name",
+                      "keyword": "workspace_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_workspace_name",
+                "query": {
+                  "datasetName": "7883e6cc",
+                  "parameters": [
+                    {
+                      "name": "workspace_name",
+                      "keyword": "workspace_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b63428611778f16e02fd877810b_workspace_name",
+                "query": {
+                  "datasetName": "14087b30",
+                  "parameters": [
+                    {
+                      "name": "workspace_name",
+                      "keyword": "workspace_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b6354aa1aa8bc274890265f8eff_workspace_name",
+                "query": {
+                  "datasetName": "cf3dd7a4",
+                  "parameters": [
+                    {
+                      "name": "workspace_name",
+                      "keyword": "workspace_name"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "workspace_name",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b62e6f812f9898fc72f9142fc82_workspace_name"
+                  },
+                  {
+                    "parameterName": "workspace_name",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_workspace_name"
+                  },
+                  {
+                    "parameterName": "workspace_name",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b63428611778f16e02fd877810b_workspace_name"
+                  },
+                  {
+                    "parameterName": "workspace_name",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b6354aa1aa8bc274890265f8eff_workspace_name"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Workspace"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "dcbcd21e",
+            "queries": [
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b62e6f812f9898fc72f9142fc82_date_of_month",
+                "query": {
+                  "datasetName": "ffda2236",
+                  "parameters": [
+                    {
+                      "name": "date_of_month",
+                      "keyword": "date_of_month"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_date_of_month",
+                "query": {
+                  "datasetName": "7883e6cc",
+                  "parameters": [
+                    {
+                      "name": "date_of_month",
+                      "keyword": "date_of_month"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "date_of_month",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b62e6f812f9898fc72f9142fc82_date_of_month"
+                  },
+                  {
+                    "parameterName": "date_of_month",
+                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_date_of_month"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Month"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 2,
+            "height": 1
           }
         }
       ]

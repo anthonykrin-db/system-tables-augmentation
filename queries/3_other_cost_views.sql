@@ -39,9 +39,9 @@ job_duration.cluster_data_security_mode,
 job_duration.cluster_source,
 cluster_cost_duration.workspace_name,
 -- (sum of creator task duration) / (total of task duration on cluster)
-sum(job_duration.day_cluster_job_task_exec_duration) creator_exec_duration,
+sum(job_duration.day_cluster_creator_task_exec_duration) job_exec_duration,
 min(cluster_cost_duration.day_cluster_task_exec_duration) cluster_exec_duration,
-creator_exec_duration/cluster_exec_duration as exec_duration_cluster_pct,
+job_exec_duration/cluster_exec_duration as exec_duration_cluster_pct,
 min(cluster_cost_duration.day_cluster_est_dbu_cost)*exec_duration_cluster_pct as exec_duration_weighted_cluster_cost
 FROM finops.system_lookups_dims.v_shared_cluster_job_duration job_duration
 INNER JOIN finops.system_lookups_dims.v_shared_cluster_job_duration_cost AS cluster_cost_duration
@@ -52,14 +52,10 @@ GROUP BY job_duration.job_name, job_duration.usage_date,job_duration.cluster_id,
 CREATE OR REPLACE VIEW finops.system_lookups_dims.v_shared_cluster_job_duration AS 
     -- cost of shared clusters that are involved in running jobs
     SELECT 
-    jr.job_name, 
-    w.workspace_id, 
-    w.workspace_name,
-    jrt.cluster_id, 
-    cl.cluster_name,
-    cl.data_security_mode cluster_data_security_mode,
-    cl.cluster_source,
-    c.usage_date,
+    jr.job_name, w.workspace_id, 
+    w.workspace_name, jrt.cluster_id, 
+    cl.cluster_name, cl.data_security_mode cluster_data_security_mode,
+    cl.cluster_source, c.usage_date,
     SUM(jrt.execution_duration) AS day_cluster_creator_task_exec_duration
     FROM finops.system_lookups_dims.v_system_usage_cost c 
     -- Filtering on clusters that have a billing record
