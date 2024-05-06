@@ -1,0 +1,238 @@
+{
+  "datasets": [
+    {
+      "name": "08f33292",
+      "displayName": "job_details",
+      "query": "\n--- TODO work in progress\n\nSELECT DATE(FROM_UNIXTIME(start_time / 1000)) day_date, result_state, job_name\nFROM finops.system_lookups_dims.v_job_runs\nORDER BY start_time DESC"
+    },
+    {
+      "name": "178acd7d",
+      "displayName": "job_runs_day",
+      "query": "SELECT COUNT(DISTINCT job_id) num_jobs, DATE(FROM_UNIXTIME(start_time / 1000)) day_date \nFROM\nfinops.system_lookups_dims.v_job_runs\ngroup by day_date\nORDER BY day_date DESC"
+    },
+    {
+      "name": "41cb918f",
+      "displayName": "jobs_per_env",
+      "query": "SELECT COUNT(DISTINCT job_id) num_jobs, workspace_name \nFROM\nfinops.system_lookups_dims.v_shared_cluster_job_duration_weighted_cost\nGROUP BY workspace_name"
+    },
+    {
+      "name": "5a9760d3",
+      "displayName": "num_jobs",
+      "query": "SELECT COUNT(*) NUM_JOBS FROM finops.system_lookups_dims.v_jobs"
+    },
+    {
+      "name": "63d96b0a",
+      "displayName": "job_status_by_day",
+      "query": "SELECT DATE(FROM_UNIXTIME(start_time / 1000)) day_date, result_state, COUNT(DISTINCT job_id) num_jobs, \nFROM\nfinops.system_lookups_dims.v_job_runs\ngroup by day_date, result_state\nORDER BY day_date DESC"
+    }
+  ],
+  "pages": [
+    {
+      "name": "ab9bb8bf",
+      "displayName": "New Page",
+      "layout": [
+        {
+          "widget": {
+            "name": "2a28eb7c",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "5a9760d3",
+                  "fields": [
+                    {
+                      "name": "sum(NUM_JOBS)",
+                      "expression": "SUM(`NUM_JOBS`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(NUM_JOBS)",
+                  "displayName": "Sum of NUM_JOBS"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "# Jobs"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "3692464c",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "178acd7d",
+                  "fields": [
+                    {
+                      "name": "daily(day_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `day_date`)"
+                    },
+                    {
+                      "name": "sum(num_jobs)",
+                      "expression": "SUM(`num_jobs`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(day_date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "day_date"
+                },
+                "y": {
+                  "fieldName": "sum(num_jobs)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of num_jobs"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "3a315afe",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "63d96b0a",
+                  "fields": [
+                    {
+                      "name": "daily(day_date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `day_date`)"
+                    },
+                    {
+                      "name": "result_state",
+                      "expression": "`result_state`"
+                    },
+                    {
+                      "name": "sum(num_jobs)",
+                      "expression": "SUM(`num_jobs`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(num_jobs)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Sum of num_jobs"
+                },
+                "y": {
+                  "fieldName": "daily(day_date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "day_date"
+                },
+                "color": {
+                  "fieldName": "result_state",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "result_state"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 3,
+            "height": 14
+          }
+        },
+        {
+          "widget": {
+            "name": "b104b15c",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "41cb918f",
+                  "fields": [
+                    {
+                      "name": "num_jobs",
+                      "expression": "`num_jobs`"
+                    },
+                    {
+                      "name": "workspace_name",
+                      "expression": "`workspace_name`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "heatmap",
+              "encodings": {
+                "x": {
+                  "fieldName": "workspace_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "workspace_name"
+                },
+                "y": {
+                  "fieldName": "num_jobs",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "num_jobs"
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 3,
+            "height": 4
+          }
+        }
+      ]
+    }
+  ]
+}
