@@ -36,8 +36,8 @@ print(AUTH_HEADER)
 # COMMAND ----------
 
 # DBTITLE 1,Database and Table Config
-DATABASE_NAME = "akrinsky_dbsql_logging"
-SCHEMA_NAME = "finops"
+DATABASE_NAME = "finops"
+SCHEMA_NAME = "system_lookups_dims"
 WAREHOUSES_TABLE_NAME = SCHEMA_NAME+".warehouses"
 JOBS_TABLE_NAME = SCHEMA_NAME+".jobs"
 DASHBOARDS_TABLE_NAME = SCHEMA_NAME+".dashboards_preview"
