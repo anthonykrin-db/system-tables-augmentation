@@ -9,7 +9,7 @@ CREATE OR REPLACE VIEW finops.system_lookups_dims.v_shared_cluster_creator_job_d
     w.workspace_name,
     jrt.cluster_id, 
     cl.cluster_name,
-    cl.cluster_data_security_mode,
+    cl.data_security_mode cluster_data_security_mode,
     cl.cluster_source,
     c.usage_date,
     SUM(jrt.execution_duration) AS day_cluster_creator_task_exec_duration

@@ -35,7 +35,7 @@ CREATE OR REPLACE VIEW  finops.system_lookups_dims.v_instance_pools as SELECT p.
 
 CREATE OR REPLACE VIEW  finops.system_lookups_dims.v_dlt_pipelines as SELECT d.* FROM finops.system_lookups_dims.dlt_pipelines d;
 
-CREATE OR REPLACE VIEW  finops.system_lookups_dims.v_clusters as SELECT coalesce(access_mode,data_security_mode) access_mode, c.* EXCEPT(access_mode,data_security_mode) FROM finops.system_lookups_dims.clusters c;
+CREATE OR REPLACE VIEW  finops.system_lookups_dims.v_clusters as SELECT * FROM finops.system_lookups_dims.clusters c;
 
 CREATE OR REPLACE VIEW  finops.system_lookups_dims.v_dashboards_preview as SELECT c.* FROM finops.system_lookups_dims.dashboards_preview c;
 

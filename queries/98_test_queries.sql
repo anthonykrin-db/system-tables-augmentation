@@ -1,16 +1,16 @@
 
--- 1179: unmatched job runs
+-- 0: unmatched job runs
 SELECT count(*) unmatched_job_runs
 FROM finops.system_lookups_dims.v_job_runs vr
 LEFT JOIN finops.system_lookups_dims.v_jobs vj ON vr.job_id = vj.job_id
 WHERE vj.job_id IS NULL;
 
--- 4768: matched job runs
+-- 5346: matched job runs
 SELECT count(*) atched_job_runs
 FROM finops.system_lookups_dims.v_job_runs vr
 JOIN finops.system_lookups_dims.v_jobs vj ON vr.job_id = vj.job_id;
 
--- 88: unmatched job runs 
+-- 0: unmatched job runs 
 SELECT count(*) unmatched_job_run_tasks
 FROM finops.system_lookups_dims.v_job_runs vr
 LEFT JOIN finops.system_lookups_dims.v_job_runs_tasks vrt ON vr.run_id = vrt.run_id
