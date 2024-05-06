@@ -153,8 +153,14 @@ if "clusters" in response_json:
   combined_df = json_documents_combined_panda(response_json["clusters"],["azure_attributes"])
   dump_pandas_info(combined_df)
   # print("parsed_json: {}".format(parsed_json))
-  clusters = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+  clusters_df = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+
+  # Check if "data_security_mode" column exists
+  if "data_security_mode" not in clusters_df.columns:
+    # Add "data_security_mode" column with default value from "access_mode" column
+    clusters_df = clusters_df.withColumn("data_security_mode", col("access_mode"))
+
   print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
-  clusters.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + CLUSTERS_TABLE_NAME)
+  clusters_df.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + CLUSTERS_TABLE_NAME)
 else:
   print("No data")
