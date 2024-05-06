@@ -1,3 +1,32 @@
+CREATE OR REPLACE VIEW akrinsky_dbsql_logging.finops.v_shared_cluster_job_duration AS 
+    -- cost of shared clusters that are involved in running jobs
+    SELECT 
+    jr.job_name, 
+    w.workspace_id, 
+    w.workspace_name,
+    jrt.cluster_id, 
+    cl.cluster_name,
+    cl.access_mode cluster_access_mode,
+    cl.cluster_source,
+    c.usage_date,
+    SUM(jrt.execution_duration) AS day_cluster_creator_task_exec_duration
+    FROM akrinsky_dbsql_logging.finops.v_system_usage_cost c 
+    -- Filtering on clusters that have a billing record
+    INNER JOIN akrinsky_dbsql_logging.finops.v_job_runs_tasks jrt 
+      on (c.usage_metadata["cluster_id"]=jrt.cluster_id AND DATE(FROM_UNIXTIME(jrt.start_time / 1000)) = c.usage_date)
+    INNER JOIN akrinsky_dbsql_logging.finops.v_clusters cl
+      on (jrt.cluster_id=cl.cluster_id)
+    INNER JOIN akrinsky_dbsql_logging.finops.v_job_runs jr 
+      on (jr.run_id=jrt.run_id) 
+    --INNER JOIN akrinsky_dbsql_logging.finops.v_jobs j
+    --  on (jr.job_id=j.job_id) 
+    INNER JOIN akrinsky_dbsql_logging.finops.v_workspaces w 
+      on (c.workspace_id=w.workspace_id)
+    -- Filtering on billing record in last 30 days
+    WHERE c.usage_date >= DATE_SUB(CURRENT_DATE(), 30)
+    GROUP BY jr.job_name, jrt.cluster_id, cl.cluster_name,c.usage_date, w.workspace_id, 
+    w.workspace_name, cl.access_mode,cl.cluster_source;
+
 
 -- cost by job-run
 -- For jobs that run on their own job clusters

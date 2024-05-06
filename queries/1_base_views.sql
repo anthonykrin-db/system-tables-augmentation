@@ -10,8 +10,13 @@ DROP VIEW  akrinsky_dbsql_logging.finops.v_dlt_pipelines;
 DROP VIEW  akrinsky_dbsql_logging.finops.v_clusters;
 DROP VIEW  akrinsky_dbsql_logging.finops.v_dashboards_preview;
 
-CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_job_runs_tasks as SELECT r.* FROM akrinsky_dbsql_logging.finops.job_runs_tasks r;
-CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_job_runs as SELECT r.* FROM akrinsky_dbsql_logging.finops.job_runs r;
+CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_job_runs_tasks as 
+SELECT jrt.*, j.name as job_name
+FROM akrinsky_dbsql_logging.finops.job_runs_tasks jrt INNER JOIN akrinsky_dbsql_logging.finops.jobs j ON (j.job_id=jrt.job_id);
+
+CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_job_runs as 
+SELECT r.*,j.name as job_name FROM akrinsky_dbsql_logging.finops.job_runs r INNER JOIN akrinsky_dbsql_logging.finops.jobs j ON (j.job_id=r.job_id);
+
 CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_jobs as SELECT j.* FROM akrinsky_dbsql_logging.finops.jobs j;
 CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_instance_pools as SELECT p.* FROM akrinsky_dbsql_logging.finops.instance_pools p;
 CREATE OR REPLACE VIEW  akrinsky_dbsql_logging.finops.v_dlt_pipelines as SELECT d.* FROM akrinsky_dbsql_logging.finops.dlt_pipelines d;

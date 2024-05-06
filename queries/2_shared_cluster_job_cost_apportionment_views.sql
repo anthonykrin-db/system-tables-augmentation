@@ -1,6 +1,5 @@
 -- apportioned cost by jobs running on shared clusters
 -- For jobs that run on shared job clusters
-
 -- intermediary query 1 (each creator)
 CREATE OR REPLACE VIEW akrinsky_dbsql_logging.finops.v_shared_cluster_creator_job_duration AS 
     -- cost of shared clusters that are involved in running jobs
