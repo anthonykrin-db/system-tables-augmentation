@@ -96,7 +96,7 @@
               "dataType": "STRING",
               "values": [
                 {
-                  "value": "Shared"
+                  "value": "all"
                 }
               ]
             }
@@ -204,7 +204,7 @@
     {
       "name": "ffda2236",
       "displayName": "cost by workspace",
-      "query": "SELECT sum(est_dbu_cost) est_dbu_cost , 2*sum(est_dbu_cost) as est_tot_cost,  workspace_name, date_trunc('MONTH', usage_date) usage_month\n FROM finops.system_lookups_dims.v_cost_byworkspace\n WHERE (CASE WHEN :workspace_name = 'all' THEN 1=1 ELSE ARRAY_CONTAINS(split(lower(:workspace_name),\";\"),lower(workspace_name)) END)\n AND (CASE WHEN :all_time = 'all'  THEN 1=1 ELSE date_trunc('MONTH',usage_date) = date_trunc('MONTH',:date_of_month) END)\n GROUP BY workspace_name , date_trunc('MONTH', usage_date)\n ORDER BY  workspace_name ASC\n",
+      "query": "SELECT \n  sum(est_dbu_cost) AS est_dbu_cost, \n  2 * sum(est_dbu_cost) AS est_tot_cost, \n  workspace_name, \n  DATE_FORMAT(usage_date, 'MMM yyyy') AS usage_month\nFROM finops.system_lookups_dims.v_cost_byworkspace\nWHERE \n  (CASE WHEN :workspace_name = 'all' THEN 1=1 ELSE ARRAY_CONTAINS(split(lower(:workspace_name), ';'), lower(workspace_name)) END) AND\n  (CASE WHEN :all_time = 'all' THEN 1=1 ELSE date_trunc('MONTH', usage_date) = date_trunc('MONTH', :date_of_month) END)\nGROUP BY \n  workspace_name, DATE_FORMAT(usage_date, 'MMM yyyy')\nORDER BY  \n  workspace_name ASC",
       "parameters": [
         {
           "displayName": "Month",
@@ -494,14 +494,18 @@
               "itemsPerPage": 25,
               "paginationSize": "default",
               "condensed": true,
-              "withRowNumber": false
+              "withRowNumber": false,
+              "frame": {
+                "showTitle": true,
+                "title": "Job details"
+              }
             }
           },
           "position": {
             "x": 0,
-            "y": 14,
+            "y": 20,
             "width": 6,
-            "height": 6
+            "height": 10
           }
         },
         {
@@ -569,15 +573,17 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Cluster"
+                "title": "Cluster",
+                "showDescription": true,
+                "description": " \"all\" or starts with"
               }
             }
           },
           "position": {
-            "x": 4,
-            "y": 1,
-            "width": 2,
-            "height": 1
+            "x": 3,
+            "y": 2,
+            "width": 1,
+            "height": 2
           }
         },
         {
@@ -756,9 +762,9 @@
           },
           "position": {
             "x": 3,
-            "y": 8,
+            "y": 12,
             "width": 3,
-            "height": 6
+            "height": 8
           }
         },
         {
@@ -814,10 +820,10 @@
             }
           },
           "position": {
-            "x": 0,
-            "y": 1,
+            "x": 4,
+            "y": 2,
             "width": 2,
-            "height": 1
+            "height": 2
           }
         },
         {
@@ -902,15 +908,17 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "\"all\" for All Time"
+                "title": "Should data cover all-time?",
+                "showDescription": true,
+                "description": "\"all\" for all dates, otherwise specify a day of a month below"
               }
             }
           },
           "position": {
-            "x": 0,
+            "x": 4,
             "y": 0,
             "width": 2,
-            "height": 1
+            "height": 2
           }
         },
         {
@@ -949,6 +957,34 @@
               "encodings": {
                 "columns": [
                   {
+                    "fieldName": "usage_month",
+                    "dateTimeFormat": "YYYY-MM-DD HH:mm:ss.SSS",
+                    "booleanValues": [
+                      "false",
+                      "true"
+                    ],
+                    "imageUrlTemplate": "{{ @ }}",
+                    "imageTitleTemplate": "{{ @ }}",
+                    "imageWidth": "",
+                    "imageHeight": "",
+                    "linkUrlTemplate": "{{ @ }}",
+                    "linkTextTemplate": "{{ @ }}",
+                    "linkTitleTemplate": "{{ @ }}",
+                    "linkOpenInNewTab": true,
+                    "type": "datetime",
+                    "displayAs": "datetime",
+                    "visible": true,
+                    "order": 0,
+                    "title": "usage_month",
+                    "allowSearch": false,
+                    "alignContent": "right",
+                    "allowHTML": false,
+                    "highlightLinks": false,
+                    "useMonospaceFont": false,
+                    "preserveWhitespace": false,
+                    "displayName": "usage_month"
+                  },
+                  {
                     "fieldName": "workspace_name",
                     "booleanValues": [
                       "false",
@@ -965,7 +1001,7 @@
                     "type": "string",
                     "displayAs": "string",
                     "visible": true,
-                    "order": 0,
+                    "order": 1,
                     "title": "workspace_name",
                     "allowSearch": false,
                     "alignContent": "left",
@@ -974,34 +1010,6 @@
                     "useMonospaceFont": false,
                     "preserveWhitespace": false,
                     "displayName": "workspace_name"
-                  },
-                  {
-                    "fieldName": "usage_month",
-                    "numberFormat": "0",
-                    "booleanValues": [
-                      "false",
-                      "true"
-                    ],
-                    "imageUrlTemplate": "{{ @ }}",
-                    "imageTitleTemplate": "{{ @ }}",
-                    "imageWidth": "",
-                    "imageHeight": "",
-                    "linkUrlTemplate": "{{ @ }}",
-                    "linkTextTemplate": "{{ @ }}",
-                    "linkTitleTemplate": "{{ @ }}",
-                    "linkOpenInNewTab": true,
-                    "type": "integer",
-                    "displayAs": "number",
-                    "visible": true,
-                    "order": 1,
-                    "title": "usage_month",
-                    "allowSearch": false,
-                    "alignContent": "right",
-                    "allowHTML": false,
-                    "highlightLinks": false,
-                    "useMonospaceFont": false,
-                    "preserveWhitespace": false,
-                    "displayName": "usage_month"
                   },
                   {
                     "fieldName": "est_dbu_cost",
@@ -1069,9 +1077,9 @@
           },
           "position": {
             "x": 0,
-            "y": 8,
+            "y": 6,
             "width": 3,
-            "height": 6
+            "height": 12
           }
         },
         {
@@ -1129,7 +1137,7 @@
           },
           "position": {
             "x": 0,
-            "y": 2,
+            "y": 0,
             "width": 3,
             "height": 6
           }
@@ -1190,9 +1198,9 @@
           },
           "position": {
             "x": 3,
-            "y": 2,
+            "y": 4,
             "width": 3,
-            "height": 6
+            "height": 8
           }
         },
         {
@@ -1277,74 +1285,17 @@
               },
               "frame": {
                 "showTitle": true,
-                "title": "Workspace"
-              }
-            }
-          },
-          "position": {
-            "x": 4,
-            "y": 0,
-            "width": 2,
-            "height": 1
-          }
-        },
-        {
-          "widget": {
-            "name": "dcbcd21e",
-            "queries": [
-              {
-                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b62e6f812f9898fc72f9142fc82_date_of_month",
-                "query": {
-                  "datasetName": "ffda2236",
-                  "parameters": [
-                    {
-                      "name": "date_of_month",
-                      "keyword": "date_of_month"
-                    }
-                  ],
-                  "disaggregated": false
-                }
-              },
-              {
-                "name": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_date_of_month",
-                "query": {
-                  "datasetName": "7883e6cc",
-                  "parameters": [
-                    {
-                      "name": "date_of_month",
-                      "keyword": "date_of_month"
-                    }
-                  ],
-                  "disaggregated": false
-                }
-              }
-            ],
-            "spec": {
-              "version": 2,
-              "widgetType": "filter-single-select",
-              "encodings": {
-                "fields": [
-                  {
-                    "parameterName": "date_of_month",
-                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b62e6f812f9898fc72f9142fc82_date_of_month"
-                  },
-                  {
-                    "parameterName": "date_of_month",
-                    "queryName": "parameter_dashboards/01eec00542b716439e49387498893cd7/datasets/01ef0b632976127bbb425294eb58ad40_date_of_month"
-                  }
-                ]
-              },
-              "frame": {
-                "showTitle": true,
-                "title": "Month"
+                "title": "Workspace",
+                "showDescription": true,
+                "description": " \"all\" or <a>;<b>;<c>"
               }
             }
           },
           "position": {
             "x": 3,
             "y": 0,
-            "width": 2,
-            "height": 1
+            "width": 1,
+            "height": 2
           }
         }
       ]
