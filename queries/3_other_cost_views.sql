@@ -1,8 +1,11 @@
+
+
 CREATE OR REPLACE VIEW finops.system_lookups_dims.v_shared_cluster_job_duration AS 
     -- cost of shared clusters that are involved in running jobs
     SELECT 
     jr.job_name, 
     jr.job_id,
+    jr.result_state,
     w.workspace_id, 
     w.workspace_name,
     jrt.cluster_id, 
@@ -26,34 +29,14 @@ CREATE OR REPLACE VIEW finops.system_lookups_dims.v_shared_cluster_job_duration 
     -- Filtering on billing record in last 30 days
     WHERE c.usage_date >= DATE_SUB(CURRENT_DATE(), 30)
     GROUP BY  jr.job_id, jr.job_name, jrt.cluster_id, cl.cluster_name,c.usage_date, w.workspace_id, 
-    w.workspace_name, cl.data_security_mode,cl.cluster_source;
+    w.workspace_name, cl.data_security_mode,cl.cluster_source,jr.result_state;
 
-
--- intermediary query 3: weighted cost of creator jobs on each cluster, as well as % cluster used (assumes only tasks run on clusters)
-CREATE OR REPLACE VIEW  finops.system_lookups_dims.v_shared_cluster_job_duration_weighted_cost AS 
-SELECT job_duration.job_name, 
-job_duration.job_id, 
-job_duration.usage_date,
-job_duration.cluster_id,
-job_duration.cluster_name,
-job_duration.cluster_data_security_mode,
-job_duration.cluster_source,
-cluster_cost_duration.workspace_name,
--- (sum of creator task duration) / (total of task duration on cluster)
-sum(job_duration.day_cluster_job_task_exec_duration) job_exec_duration,
-min(cluster_cost_duration.day_cluster_task_exec_duration) cluster_exec_duration,
-job_exec_duration/cluster_exec_duration as exec_duration_cluster_pct,
-min(cluster_cost_duration.day_cluster_est_dbu_cost)*exec_duration_cluster_pct as exec_duration_weighted_cluster_cost
-FROM finops.system_lookups_dims.v_shared_cluster_job_duration job_duration
-INNER JOIN finops.system_lookups_dims.v_shared_cluster_job_duration_cost AS cluster_cost_duration
-ON (job_duration.cluster_id=cluster_cost_duration.cluster_id AND job_duration.usage_date=cluster_cost_duration.usage_date )
-GROUP BY job_duration.job_name, job_duration.usage_date,job_duration.cluster_id, job_duration.job_id,job_duration.cluster_name, job_duration.cluster_data_security_mode,job_duration.cluster_source,cluster_cost_duration.workspace_name;
 
 
 CREATE OR REPLACE VIEW finops.system_lookups_dims.v_shared_cluster_job_duration AS 
     -- cost of shared clusters that are involved in running jobs
     SELECT 
-    jr.job_name, w.workspace_id, 
+    jr.job_name, w.workspace_id, jr.result_state,
     w.workspace_name, jrt.cluster_id, 
     cl.cluster_name, cl.data_security_mode cluster_data_security_mode,
     cl.cluster_source, c.usage_date,
@@ -70,10 +53,8 @@ CREATE OR REPLACE VIEW finops.system_lookups_dims.v_shared_cluster_job_duration 
     --  on (jr.job_id=j.job_id) 
     INNER JOIN finops.system_lookups_dims.v_workspaces w 
       on (c.workspace_id=w.workspace_id)
-    -- Filtering on billing record in last 30 days
-    WHERE c.usage_date >= DATE_SUB(CURRENT_DATE(), 30)
     GROUP BY jr.job_name, jrt.cluster_id, cl.cluster_name,c.usage_date, w.workspace_id, 
-    w.workspace_name, cl.data_security_mode,cl.cluster_source;
+    w.workspace_name, cl.data_security_mode,cl.cluster_source,jr.result_state;
 
 
 -- cost by job-run
