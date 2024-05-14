@@ -1,6 +1,131 @@
 # Databricks notebook source
 # MAGIC %md
+# MAGIC `Loading imports`
+
+# COMMAND ----------
+
+# DBTITLE 1,Imports
+import requests
+import time
+import json
+import hashlib
+import pandas as pd
+from datetime import date, datetime, timedelta
+from pyspark.sql.functions import from_unixtime, lit, json_tuple, explode, current_date, current_timestamp
+from delta.tables import *
+
+
+# COMMAND ----------
+
+# DBTITLE 1,Force merge
+dbutils.widgets.dropdown("param_force_merge_incremental", "False", ["True", "False"], "Force merge")
+FORCE_MERGE_INCREMENTAL = dbutils.widgets.get("param_force_merge_incremental")
+print(f"FORCE_MERGE_INCREMENTAL: {FORCE_MERGE_INCREMENTAL}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC `Loading spark settings`
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC `Loading public methods`
+
+# COMMAND ----------
+
+def execute_multiline_sql_file(path):
+    # Read the contents of the SQL file
+    sql_statements = None
+    with open(path, "r") as file:
+        sql_statements = file.read()
+
+    if sql_statements is None:
+        print("No sql statements found.")
+
+    # Split the SQL statements by semicolon (;)
+    statements = sql_statements.split(";")
+
+    # Execute each SQL statement
+    for statement in statements:
+        # Skip empty statements
+        if statement.strip():
+            if statement.startswith("--"):
+                print(f"Skipping statement: {statement}")
+            elif "VIEW" in statement:
+                try:
+                    print(f"\n============================\nExecuting statement: {statement}\n")
+                    spark.sql(statement)
+                except Exception as e:
+                    print("Exception found: ", e)
+            else:
+                print(f"Ignoring statement: {statement}")
+
+# COMMAND ----------
+
+# DBTITLE 1,Config densification
+from pyspark.sql.functions import from_unixtime, lit, json_tuple, explode, current_date, current_timestamp
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+def densify_monthly_config_df(money_struct,field_name):
+
+  # Convert the DBU_DISCOUNT data structure to a list of tuples
+  discount_data = [(datetime.strptime(k, "%m-%Y"), Decimal(v)) for k, v in money_struct.items()]
+
+  # Sort the discount data by date
+  discount_data.sort(key=lambda x: x[0])
+
+  # Generate the date range
+  start_date = discount_data[0][0].replace(day=1)
+  end_date = discount_data[-1][0].replace(day=1)
+
+  current_date = start_date
+  current_discount = None
+
+  # Initialize the result list
+  result = []
+
+  # Iterate over the date range
+  while current_date <= end_date:
+      # Check if there is a discount value for the current date
+      discount_found = False
+      for date, discount in discount_data:
+          if date == current_date:
+              current_discount = discount
+              discount_found = True
+              break
+
+      # If no discount value is found, use the previous discount value
+      result.append((current_date.replace(day=1), current_discount))
+
+      # Move to the next month
+      current_date += timedelta(days=32)
+      current_date = current_date.replace(day=1)
+
+  # Create a pandas DataFrame from the result
+  pdf_discounts = pd.DataFrame(result, columns=["month_date", field_name])
+
+  # Convert the pandas DataFrame to a Spark DataFrame
+  discounts_df = spark.createDataFrame(pdf_discounts) \
+      .withColumn("month_date", date_format(col("month_date"), "yyyy-MM-dd").cast("date")) \
+      .withColumn("snapshot_time", current_timestamp())
+
+  return discounts_df
+
+# COMMAND ----------
+
+def lookup_last_record_value(db_name, table_name, field_name):
+  last_value = None
+  try:
+    last_value_sql = "SELECT {} FROM {}.{} ORDER BY {} DESC LIMIT 1".format(field_name, db_name,table_name,field_name)
+    #print("Looking up las record value: ",last_value_sql)
+    last_value_df=spark.sql(last_value_sql)
+    last_value = last_value_df.first()[0]
+    #print("last_value: {}",last_value)
+  except Exception as e:
+    print("Unable to get last value: {}",e)
+  return last_value
 
 # COMMAND ----------
 

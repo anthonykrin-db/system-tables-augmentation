@@ -4,15 +4,15 @@
 
 # COMMAND ----------
 
-# MAGIC %run ./00-Config
+# MAGIC %run ./../00-Config
 
 # COMMAND ----------
 
-# MAGIC %run ./01-Functions
+# MAGIC %run ./../01-Functions
 
 # COMMAND ----------
 
-# MAGIC %run ./02-Initialization
+# MAGIC %run ./../02-Initialization
 
 # COMMAND ----------
 
@@ -29,46 +29,32 @@ import pytz
 
 # COMMAND ----------
 
-# DBTITLE 1,Parameter Widgets
+# DBTITLE 1,Get latest timestamp
 
 
-# Default from_date to 30 days ago
-default_from_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+# JOB_RUNS
+###########################
+# start_time_from int64
+# Show runs that started at or after this value. The value must be a UTC timestamp in milliseconds.  
+# start_time_to int64
+# Show runs that started at or before this value. The value must be a UTC timestamp in milliseconds. 
 
-# Create the widgets with default values and date range validation
-dbutils.widgets.text("to_date", default_to_date, "To Date")
-dbutils.widgets.text("from_date", default_from_date, "From Date")
-dbutils.widgets.dropdown("mode", "merge", ["merge", "replace"], "Mode")
+last_job_run_start_time_sql = "SELECT start_time FROM {}.{} ORDER BY start_time DESC LIMIT 1".format(DATABASE_NAME,JOB_RUNS_TABLE_NAME)
+print(last_job_run_start_time_sql)
+last_job_run_start_time_df=spark.sql(last_job_run_start_time_sql)
+last_job_run_start_time = last_snapshot_time_df.first()[0]
+print(last_job_run_start_time)
 
-# Get the widget values
-to_date = dbutils.widgets.get("to_date")
-from_date = dbutils.widgets.get("from_date")
-mode = dbutils.widgets.get("mode")
+# WORKSPACE_OBJECTS
+###########################
+# notebooks_modified_after integer
+# UTC timestamp in milliseconds
+last_modified_sql = "SELECT modified_at FROM {}.{} ORDER BY modified_at DESC LIMIT 1".format(DATABASE_NAME,WORKSPACE_OBJECTS_TABLE_NAME)
+print(last_modified_sql)
+last_modified_df=spark.sql(last_modified_sql)
+last_modified_at = last_modified_df.first()[0]
+print(last_modified_at)
 
-# Check if from_date is provided
-if from_date:
-    # Convert the date strings to datetime objects
-    to_date_obj = datetime.strptime(to_date, "%Y-%m-%d")
-    from_date_obj = datetime.strptime(from_date, "%Y-%m-%d")
-
-    # Calculate the date difference
-    date_diff = to_date_obj - from_date_obj
-
-    # Check if the date difference exceeds 45 days
-    if date_diff.days > 45:
-        raise ValueError("The date range cannot exceed 45 days.")
-else:
-    # If from_date is not provided, set it to 45 days before to_date
-    from_date_obj = datetime.strptime(to_date, "%Y-%m-%d") - timedelta(days=45)
-    from_date = from_date_obj.strftime("%Y-%m-%d")
-
-# Print the selected values
-print(f"To Date: {to_date}")
-print(f"From Date: {from_date}")
-print(f"Mode: {mode}")
-
-# Your notebook code goes here
-# Use the to_date, from_date, and mode variables as needed
 
 # COMMAND ----------
 

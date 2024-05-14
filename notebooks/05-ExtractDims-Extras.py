@@ -11,28 +11,7 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Settings
-spark.conf.set("spark.databricks.delta.schema.autoMerge.enabled","true") # needed for query history API
-spark.sql("SET spark.databricks.delta.properties.defaults.minReaderVersion = 2") # needed for workspace API
-spark.sql("SET spark.databricks.delta.properties.defaults.minWriterVersion = 5") # needed for workspace API
-spark.sql("SET spark.databricks.delta.properties.defaults.columnMapping.mode = name") # needed for workspace API
-
-# COMMAND ----------
-
-# DBTITLE 1,Imports
-import requests
-import time
-import json
-from datetime import date, datetime, timedelta
-from pyspark.sql.functions import from_unixtime, lit, json_tuple, explode, current_date, current_timestamp
-from delta.tables import *
-
-# COMMAND ----------
-
 # DBTITLE 1,Delta Pipelines
-import json
-import pandas as pd
-import requests
 
 response = requests.get(DLT_PIPELINES_URL, headers=AUTH_HEADER)
 
@@ -76,8 +55,6 @@ while response_json["statuses"]:
 # COMMAND ----------
 
 # DBTITLE 1,intance pools
-import json
-import pandas as pd
 
 response = requests.get(INSTANCE_POOLS_URL, headers=AUTH_HEADER)
 
@@ -148,8 +125,7 @@ except Exception as e:
 # COMMAND ----------
 
 # DBTITLE 1,Warehouses
-import json
-import pandas as pd
+
 
 response = requests.get(WAREHOUSES_URL, headers=AUTH_HEADER)
 
@@ -175,9 +151,18 @@ except Exception as e:
 # COMMAND ----------
 
 # DBTITLE 1,notebooks
-import json
-import pandas as pd
 
+# Default rest API no incremental
+workspace_objects_incremental_url = WORKSPACE_OBJECTS_URL
+
+last_modified_at = lookup_last_record_value(DATABASE_NAME,WORKSPACE_OBJECTS_TABLE_NAME, "modified_at")
+if last_modified_at is None:
+  print("Unable to get last modified at time.  Getting all workspace objects.")
+else:
+  print("Getting workspace objects after last modified at time.")
+  workspace_objects_incremental_url = WORKSPACE_OBJECTS_URL+"?notebooks_modified_after="+str(last_modified_at)
+
+# Recursive function to get workplace objects
 def get_path_objs(path,depth=-1):
   params = {}
   if depth==-1:
@@ -190,7 +175,7 @@ def get_path_objs(path,depth=-1):
         "depth": depth    # Limit the depth to 1 to retrieve only top-level directories
     }
 
-  response = requests.get(WORKSPACE_OBJECTS_URL, headers=AUTH_HEADER, params=params)
+  response = requests.get(workspace_objects_incremental_url, headers=AUTH_HEADER, params=params)
 
   if response.status_code != 200:
       raise Exception(response.text)
@@ -201,7 +186,7 @@ def get_path_objs(path,depth=-1):
     json = response_json["objects"]
   return json
 
-
+# method starts here
 top_level_objects=get_path_objs("/",1)
 # This will ignore directory path
     
@@ -227,13 +212,31 @@ for top_level_object in top_level_objects:
 try:
 
   if len(all_objs)>0:
+    # Objects will be combined on the driver node
     combined_df=json_documents_combined_panda(all_objs)
     dump_pandas_info(combined_df)
     # print("parsed_json: {}".format(parsed_json))
-    notebooks = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
-
+    notebooks_df = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+    # Objects will be atonomically written
     print("Saving table: {}.{}".format(DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME))
-    notebooks.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + WORKSPACE_OBJECTS_TABLE_NAME)
+
+    if last_modified_at is None:
+      print("Overwriting new table")
+      notebooks_df.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + WORKSPACE_OBJECTS_TABLE_NAME)
+    else:
+      print("Updating incrementally")
+      if FORCE_MERGE_INCREMENTAL:
+        notebooks_df.createOrReplaceTempView("notebooks_df_table")
+        # key field: object_id
+        merge_sql="MERGE INTO {}.{} AS target USING {} AS source ON target.{} = source.{} WHEN MATCHED THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *".format(DATABASE_NAME,WORKSPACE_OBJECTS_TABLE_NAME, notebooks_df_table,"object_id","object_id")
+        print("merge_sql: {}",merge_sql)
+        spark.sql(merge_sql)   
+      else:
+        print("Appending incrementals")
+        # Append data and merge schema
+        notebooks_df.write.format("delta").option("mergeSchema", "true").mode("append").saveAsTable(DATABASE_NAME + "." + WORKSPACE_OBJECTS_TABLE_NAME)
+
+
   else:
     print("No data")
 
