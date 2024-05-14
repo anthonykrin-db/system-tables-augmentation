@@ -58,22 +58,24 @@ CREATE OR REPLACE VIEW finops.system_lookups.v_shared_cluster_job_duration AS
 
 -- v_cost_byworkspace
 CREATE OR REPLACE VIEW  finops.system_lookups.v_cost_byworkspace AS
-SELECT c.workspace_id, w.workspace_name, c.usage_date, c.sku_name, sum(c.est_dbu_cost) est_dbu_cost
+SELECT c.workspace_id, w.workspace_name, c.usage_date, c.sku_name, 
+sum(c.est_dbu_cost) est_tot_dbu_cost,
+sum(c.est_infra_cost) est_tot_infra_const,
+sum(c.est_total_cost) est_total_cost
 FROM  finops.system_lookups.v_system_usage_cost c
 INNER JOIN finops.system_lookups.v_workspaces w ON (c.workspace_id=w.workspace_id)
 GROUP BY c.workspace_id, w.workspace_name, c.usage_date, c.sku_name;
 
 -- v_cost_bycluster
 CREATE OR REPLACE VIEW  finops.system_lookups.v_cost_bycluster AS
-SELECT c.workspace_id, w.workspace_name, c.usage_date, c.sku_name, sum(c.est_dbu_cost) est_dbu_cost, cl.cluster_id, cl.cluster_name
+SELECT c.workspace_id, w.workspace_name, c.usage_date, c.sku_name, 
+sum(c.est_dbu_cost) est_tot_dbu_cost,
+sum(c.est_infra_cost) est_tot_infra_const,
+sum(c.est_total_cost) est_total_cost,
+cl.cluster_id, cl.cluster_name
 FROM  finops.system_lookups.v_system_usage_cost c
 INNER JOIN finops.system_lookups.v_workspaces w ON (c.workspace_id=w.workspace_id)
 INNER JOIN finops.system_lookups.v_clusters cl ON (cl.cluster_id=c.usage_metadata["cluster_id"])
 GROUP BY c.workspace_id, w.workspace_name, c. usage_date, c.sku_name,cl.cluster_id, cl.cluster_name;
 
-
-
-
-
-
-
+=
