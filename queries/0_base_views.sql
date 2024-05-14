@@ -14,7 +14,11 @@ CREATE OR REPLACE VIEW  finops.system_lookups.v_instance_pools as SELECT p.* FRO
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_dlt_pipelines as SELECT d.* FROM finops.system_lookups.dlt_pipelines d;
 
-CREATE OR REPLACE VIEW  finops.system_lookups.v_clusters as SELECT * FROM finops.system_lookups.clusters c;
+-- cluster specifications change continually as noted by change_time
+-- for cluster_id + time we can figure out actual configuration at that time
+CREATE OR REPLACE VIEW  finops.system_lookups.v_clusters as 
+SELECT DISTINCT c.cluster_id, c.cluster_name FROM finops.system_compute.clusters c;
+-- INNER JOIN finops.system_compute.clusters_pinned cp ON c.cluster_id=cp.cluster_id;
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_dashboards_preview as SELECT c.* FROM finops.system_lookups.dashboards_preview c;
 
@@ -29,9 +33,9 @@ SELECT
   usage.usage_quantity,
   -- discounted cost
   list_prices.pricing ["default"] est_dbu_price,
-  est_dbu_price*usage.usage_quantity*discounts.discount est_dbu_cost,
+  est_dbu_price*usage.usage_quantity*(1-discounts.discount) est_dbu_cost,
   -- total cost including virtual machines
-  est_dbu_cost*(infra_markup.amount) est_infra_cost,
+  est_dbu_cost*infra_markup.amount est_infra_cost,
   est_dbu_cost*(1+infra_markup.amount) est_total_cost,
   usage_date,
   usage.sku_name,
