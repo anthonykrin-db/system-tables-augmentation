@@ -1,13 +1,4 @@
--- DROP VIEW finops.system_lookups.v_shared_cluster_job_duration_weighted_cost;
--- DROP VIEW finops.system_lookups.v_shared_cluster_creator_job_duration_weighted_cost;
--- DROP VIEW finops.system_lookups.v_shared_cluster_job_duration;
--- DROP VIEW finops.system_lookups.v_shared_cluster_job_duration_cost;
--- DROP VIEW finops.system_lookups.v_shared_cluster_job_duration_weighted_cost;
--- DROP VIEW finops.system_lookups.v_shared_cluster_creator_job_duration;
--- DROP VIEW finops.system_lookups.v_cost_bycluster;
--- DROP VIEW finops.system_lookups.v_cost_byshared_cluster_daily_apportionment;
--- DROP VIEW finops.system_lookups.v_cost_bytag_daily_apportionment;
--- DROP VIEW finops.system_lookups.v_cost_byworkspace;
+
 
 CREATE OR REPLACE VIEW finops.system_lookups.v_job_run_duration AS 
     -- cost of shared clusters that are involved in running jobs
