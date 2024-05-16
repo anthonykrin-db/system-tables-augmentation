@@ -1,63 +1,20 @@
+-- Replace x_Owner with whatever tag you need
+-- create breakdowns by a custom_tags.<tag> for prior 30 days
+CREATE OR REPLACE VIEW  finops.system_lookups.v_cost_by_tag_daily_apportionment AS 
+SELECT c.custom_tags.x_Owner businessUnit, c.usage_date,
+sum(c.est_dbu_cost) bu_cost, 
+min(agg_cost.total_cost) total_cost,
+ROUND(sum(est_dbu_cost)/min(agg_cost.total_cost),4) period_pct_cost
+from finops.system_lookups.v_system_usage_cost c INNER JOIN
+(
+SELECT sum(uc.est_dbu_cost) total_cost, uc.usage_date
+from finops.system_lookups.v_system_usage_cost uc
+GROUP BY uc.usage_date
+) as agg_cost ON (agg_cost.usage_date=c.usage_date)
+GROUP BY custom_tags.x_Owner,c.usage_date;
 
-
-CREATE OR REPLACE VIEW finops.system_lookups.v_shared_cluster_job_duration AS 
-    -- cost of shared clusters that are involved in running jobs
-    SELECT 
-    jr.job_name, 
-    jr.job_id,
-    jr.result_state,
-    w.workspace_id, 
-    w.workspace_name,
-    jrt.cluster_id, 
-    cl.cluster_name,
-    cl.data_security_mode cluster_data_security_mode,
-    cl.cluster_source,
-    c.usage_date,
-    SUM(jrt.execution_duration) AS day_cluster_job_task_exec_duration
-    FROM finops.system_lookups.v_system_usage_cost c 
-    -- Filtering on clusters that have a billing record
-    INNER JOIN finops.system_lookups.v_job_runs_tasks jrt 
-      on (c.usage_metadata["cluster_id"]=jrt.cluster_id AND DATE(FROM_UNIXTIME(jrt.start_time / 1000)) = c.usage_date)
-    INNER JOIN finops.system_lookups.v_clusters cl
-      on (jrt.cluster_id=cl.cluster_id)
-    INNER JOIN finops.system_lookups.v_job_runs jr 
-      on (jr.run_id=jrt.run_id) 
-    --INNER JOIN finops.system_lookups.v_jobs j
-    --  on (jr.job_id=j.job_id) 
-    INNER JOIN finops.system_lookups.v_workspaces w 
-      on (c.workspace_id=w.workspace_id)
-    -- Filtering on billing record in last 30 days
-    WHERE c.usage_date >= DATE_SUB(CURRENT_DATE(), 30)
-    GROUP BY  jr.job_id, jr.job_name, jrt.cluster_id, cl.cluster_name,c.usage_date, w.workspace_id, 
-    w.workspace_name, cl.data_security_mode,cl.cluster_source,jr.result_state;
-
-
-
-CREATE OR REPLACE VIEW finops.system_lookups.v_shared_cluster_job_duration AS 
-    -- cost of shared clusters that are involved in running jobs
-    SELECT 
-    jr.job_name, w.workspace_id, jr.result_state,
-    w.workspace_name, jrt.cluster_id, 
-    cl.cluster_name, cl.data_security_mode cluster_data_security_mode,
-    cl.cluster_source, c.usage_date,
-    SUM(jrt.execution_duration) AS day_cluster_creator_task_exec_duration
-    FROM finops.system_lookups.v_system_usage_cost c 
-    -- Filtering on clusters that have a billing record
-    INNER JOIN finops.system_lookups.v_job_runs_tasks jrt 
-      on (c.usage_metadata["cluster_id"]=jrt.cluster_id AND DATE(FROM_UNIXTIME(jrt.start_time / 1000)) = c.usage_date)
-    INNER JOIN finops.system_lookups.v_clusters cl
-      on (jrt.cluster_id=cl.cluster_id)
-    INNER JOIN finops.system_lookups.v_job_runs jr 
-      on (jr.run_id=jrt.run_id) 
-    --INNER JOIN finops.system_lookups.v_jobs j
-    --  on (jr.job_id=j.job_id) 
-    INNER JOIN finops.system_lookups.v_workspaces w 
-      on (c.workspace_id=w.workspace_id)
-    GROUP BY jr.job_name, jrt.cluster_id, cl.cluster_name,c.usage_date, w.workspace_id, 
-    w.workspace_name, cl.data_security_mode,cl.cluster_source,jr.result_state;
-
--- v_cost_byworkspace
-CREATE OR REPLACE VIEW  finops.system_lookups.v_cost_byworkspace AS
+-- v_cost_by_workspace
+CREATE OR REPLACE VIEW  finops.system_lookups.v_cost_by_workspace AS
 SELECT c.workspace_id, w.workspace_name, c.usage_date, c.sku_name, 
 sum(c.est_dbu_cost) est_tot_dbu_cost,
 sum(c.est_infra_cost) est_tot_infra_const,
@@ -66,8 +23,8 @@ FROM  finops.system_lookups.v_system_usage_cost c
 INNER JOIN finops.system_lookups.v_workspaces w ON (c.workspace_id=w.workspace_id)
 GROUP BY c.workspace_id, w.workspace_name, c.usage_date, c.sku_name;
 
--- v_cost_bycluster
-CREATE OR REPLACE VIEW  finops.system_lookups.v_cost_bycluster AS
+-- v_cost_by_cluster
+CREATE OR REPLACE VIEW  finops.system_lookups.v_cost_by_cluster AS
 SELECT c.workspace_id, w.workspace_name, cl.cluster_id, cl.cluster_name, c.usage_date, c.sku_name, 
 sum(c.est_dbu_cost) est_tot_dbu_cost,
 sum(c.est_infra_cost) est_tot_infra_const,

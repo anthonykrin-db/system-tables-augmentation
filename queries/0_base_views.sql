@@ -4,11 +4,17 @@
 CREATE OR REPLACE VIEW  finops.system_lookups.v_jobs as SELECT j.* FROM finops.system_lookups.jobs j;
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_job_runs as 
-SELECT r.*,j.name as job_name FROM finops.system_lookups.job_runs r INNER JOIN finops.system_lookups.jobs j ON (j.job_id=r.job_id);
+SELECT 
+DATE(FROM_UNIXTIME(r.start_time / 1000)) usage_date, 
+r.*,j.name as job_name 
+FROM finops.system_lookups.job_runs r INNER JOIN finops.system_lookups.jobs j ON (j.job_id=r.job_id);
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_job_runs_tasks as 
-SELECT jrt.*, j.name as job_name
-FROM finops.system_lookups.job_runs_tasks jrt INNER JOIN finops.system_lookups.jobs j ON (j.job_id=jrt.job_id);
+SELECT 
+DATE(FROM_UNIXTIME(MIN(jrt.start_time) / 1000)) usage_date, 
+jrt.*, j.name as job_name, IF(attempt_number>0,"REPEAT","INITIAL") attempt_type
+FROM finops.system_lookups.job_runs_tasks jrt INNER JOIN finops.system_lookups.jobs j ON (j.job_id=jrt.job_id)
+GROUP BY ALL;
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_instance_pools as SELECT p.* FROM finops.system_lookups.instance_pools p;
 
