@@ -10,18 +10,26 @@ The intent of this project is facilitate decommissioning the heavy-weight Overwa
 
 ## Usage
 <ol>
-<li>Please set configuration found in in <b>00_Config</b></li>
+<li>Please set configuration found in <b>00_Config</b></li>
 <li>Create a Workflow that runds these notebooks in the following order, not more than once per hour:<br>
-<ol><i>
-<li>notebooks/03-ArchiveSystemTables</li>
-<li>notebooks/04-ExtractDims-Core</li>
-<li>notebooks/05-ExtractDims-Extras</li>
-<li>notebooks/06-UpdateViews</li></i>
-</ol>
+
+`notebooks/03-ArchiveSystemTables`<br>
+`notebooks/04-ExtractDims-Core`<br>
+`notebooks/05-ExtractDims-Extras`<br>
+`notebooks/06-UpdateViews`<p>
+
 </li>
 
 <li>If the schema specified in configuration is not empty, make sure that you can tolerate tables starting with <b>system_</b> being created there.</li>
 <li>Download and install dashboards in /dashboards folder.</li>
+</ol>
+
+## Checking infrastructure markup costs
+You may find that your infrastructure markup estimates were incorrect.  This is very hard to calculate directly in some cases because of reservation costs, spot pricing, etc.  A rough true-up is probably your best bet.
+
+<ol>
+<li>Update <b>INFRA_MARKUP</b> estimates in <b>00_Config</b></li>
+<li>Run just this notebook: `notebooks/02-Initialization`</li>
 </ol>
 
 ## Permissions

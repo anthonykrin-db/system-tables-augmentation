@@ -148,7 +148,7 @@ else:
 
 ###################################################
 # write tasks
-tasks_combined_df = json_documents_combined_panda(tasks_json,["cluster_instance"],[])
+tasks_combined_df = json_documents_combined_panda(tasks_json,["cluster_instance","state"],[])
 dump_pandas_info(tasks_combined_df)
 job_run_tasks_df = spark.createDataFrame(tasks_combined_df).withColumn("snapshot_time", current_timestamp())
 print("Saving table: {}.{}".format(DATABASE_NAME, JOB_RUNS_TABLE_NAME+"_TASKS"))
@@ -194,8 +194,8 @@ if "clusters" in response_json:
   if "data_security_mode" not in clusters_df.columns:
     # Add "data_security_mode" column with default value from "access_mode" column
     clusters_df = clusters_df.withColumn("data_security_mode", col("access_mode"))
+    print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
+    clusters_df.write.format("delta").option("overwriteShema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + CLUSTERS_TABLE_NAME)
 
-  print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
-  clusters_df.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + CLUSTERS_TABLE_NAME)
 else:
   print("No data")

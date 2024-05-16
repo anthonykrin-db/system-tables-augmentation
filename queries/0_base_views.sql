@@ -17,8 +17,10 @@ CREATE OR REPLACE VIEW  finops.system_lookups.v_dlt_pipelines as SELECT d.* FROM
 -- cluster specifications change continually as noted by change_time
 -- for cluster_id + time we can figure out actual configuration at that time
 CREATE OR REPLACE VIEW  finops.system_lookups.v_clusters as 
-SELECT DISTINCT c.cluster_id, c.cluster_name FROM finops.system_compute.clusters c;
--- INNER JOIN finops.system_compute.clusters_pinned cp ON c.cluster_id=cp.cluster_id;
+SELECT c.cluster_id, c.cluster_name, coalesce(cp.data_security_mode,"") data_security_mode, 
+cp.* EXCEPT(cluster_id,cluster_name,data_security_mode)
+FROM (SELECT DISTINCT cluster_id, cluster_name FROM finops.system_compute.clusters) c
+LEFT OUTER JOIN finops.system_lookups.clusters_pinned cp ON c.cluster_id=cp.cluster_id;
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_dashboards_preview as SELECT c.* FROM finops.system_lookups.dashboards_preview c;
 
@@ -28,18 +30,13 @@ SELECT * FROM finops.system_lookups.workspaces;
 -- v_system_usage_cost (start here);
 CREATE OR REPLACE VIEW finops.system_lookups.v_system_usage_cost AS 
 SELECT
-  usage.custom_tags,
-  usage.usage_metadata,
-  usage.usage_quantity,
+  usage.*,
   -- discounted cost
   list_prices.pricing ["default"] est_dbu_price,
   est_dbu_price*usage.usage_quantity*(1-discounts.discount) est_dbu_cost,
   -- total cost including virtual machines
   est_dbu_cost*infra_markup.amount est_infra_cost,
-  est_dbu_cost*(1+infra_markup.amount) est_total_cost,
-  usage_date,
-  usage.sku_name,
-  workspace_id
+  est_dbu_cost*(1+infra_markup.amount) est_total_cost
 FROM
   finops.system_billing.usage usage
   INNER JOIN finops.system_billing.list_prices list_prices on usage.cloud = list_prices.cloud

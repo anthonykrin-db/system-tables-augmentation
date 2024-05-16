@@ -43,6 +43,7 @@ DBU_DISCOUNTS = {
 # Be sure to include a distant end date
 INFRA_MARKUPS = {
   "01-2020":"0.65",
+  "02-2024":"0.55",
   "03-2024":"0.55",
   "01-2030":"0.55"
 }
@@ -1065,11 +1066,12 @@ SYSTEM_TABLES_INCREMENT={
 	"system.access.table_lineage":"event_time",
 	"system.billing.usage":"usage_start_time",
 	"system.compute.node_timeline":"start_time",
-	"system.compute.warehouse_events":"event_time",
-	"system.marketplace.listing_access_events":"event_time",
-	"system.marketplace.listing_funnel_events":"event_time",
-	"system.query.history":"start_time",
-	"system.storage.predictive_optimization_operations_history":"start_time"
+	"system.compute.warehouse_events":"event_time"
+# ,
+#	"system.marketplace.listing_access_events":"event_time",
+#	"system.marketplace.listing_funnel_events":"event_time",
+#	"system.query.history":"start_time",
+#	"system.storage.predictive_optimization_operations_history":"start_time"
 }
 
 
