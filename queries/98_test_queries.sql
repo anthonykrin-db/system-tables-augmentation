@@ -24,14 +24,3 @@ SELECT count(*) unmatched_job_run_tasks
 FROM finops.system_lookups.v_job_runs_tasks vrt  
 LEFT JOIN finops.system_lookups.v_job_runs vr ON vr.run_id = vrt.run_id
 WHERE vrt.run_id IS NULL;
-
-
--- final apportionment
-SELECT * FROM finops.system_lookups.v_cost_byshared_cluster_apportionment;
-
--- check jobs
-SELECT * FROM finops.system_lookups.v_shared_cluster_creator_job_duration;
-
-SELECT DISTINCT data_security_mode, access_mode FROM  finops.system_lookups.v_clusters;
-
-
