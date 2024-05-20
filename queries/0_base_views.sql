@@ -41,6 +41,7 @@ SELECT
   usage.*,
   -- discounted cost
   list_prices.pricing ["default"] est_dbu_price,
+  est_dbu_price*usage.usage_quantity list_dbu_cost,
   est_dbu_price*usage.usage_quantity*(1-discounts.discount) est_dbu_cost,
   -- total cost including virtual machines
   est_dbu_cost*infra_markup.amount est_infra_cost,
@@ -56,3 +57,4 @@ FROM
   )
   INNER JOIN finops.system_lookups.dbu_discounts discounts on date_trunc('MONTH',usage.usage_start_time)=discounts.month_date
   INNER JOIN finops.system_lookups.infra_markups infra_markup on date_trunc('MONTH',usage.usage_start_time)=infra_markup.month_date;
+
