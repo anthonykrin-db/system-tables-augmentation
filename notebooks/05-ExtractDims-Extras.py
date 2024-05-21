@@ -219,7 +219,6 @@ try:
     notebooks_df = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
     # Objects will be atonomically written
     print("Saving table: {}.{}".format(DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME))
-
     append_merge(last_modified_at, notebooks_df, DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME, "object_id")
 
   else:

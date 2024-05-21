@@ -33,7 +33,7 @@ FROM instance_counts
 GROUP BY metric_date_hour
 ));
 
--- TODO: test with real node_timeline date
+-- TODO: add workspace name
 CREATE OR REPLACE VIEW finops.system_lookups.v_usage_minute_matrix AS 
 WITH 
 time_table AS (

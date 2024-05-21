@@ -118,8 +118,8 @@ def densify_monthly_config_df(money_struct,field_name):
 def lookup_last_record_value(db_name, table_name, field_name):
   last_value = None
   try:
-    last_value_sql = "SELECT {} FROM {}.{} ORDER BY {} DESC LIMIT 1".format(field_name, db_name,table_name,field_name)
-    #print("Looking up las record value: ",last_value_sql)
+    last_value_sql = f"SELECT {field_name} FROM {db_name}.{table_name} ORDER BY {field_name} DESC LIMIT 1"
+    print("Looking up last record value: ",last_value_sql)
     last_value_df=spark.sql(last_value_sql)
     last_value = last_value_df.first()[0]
     #print("last_value: {}",last_value)
@@ -132,11 +132,10 @@ def lookup_last_record_value(db_name, table_name, field_name):
 def count_duplicates(db_name, table_name, field_name):
   num_dups = 0
   try:
-    num_dups_sql = f"WITH cte AS ( SELECT {field_name}, ROW_NUMBER() OVER(PARTITION BY {field_name} ORDER BY {field_name}) AS rowno FROM {db_name}.{table_name}.{field_name} ) SELECT COUNT(*) FROM cte WHERE rowno > 1"
-    print("Looking up las record value: ",num_dups_sql)
+    num_dups_sql = f"WITH cte AS ( SELECT {field_name}, ROW_NUMBER() OVER(PARTITION BY {field_name} ORDER BY {field_name}) AS rowno FROM {db_name}.{table_name} ) SELECT COUNT(*) FROM cte WHERE rowno > 1"
     num_dups_df=spark.sql(num_dups_sql)
     num_dups = num_dups_df.first()[0]
-    print("num_dups: {}",num_dups)
+    print("Found {} duplicate records",num_dups)
   except Exception as e:
     print("Unable to get last value: {}",e)
   return num_dups
