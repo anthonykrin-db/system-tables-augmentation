@@ -167,8 +167,8 @@ if "clusters" in response_json:
   if "data_security_mode" not in clusters_df.columns:
     # Add "data_security_mode" column with default value from "access_mode" column
     clusters_df = clusters_df.withColumn("data_security_mode", col("access_mode"))
-    print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
-    clusters_df.write.format("delta").option("overwriteShema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + CLUSTERS_TABLE_NAME)
+  print("Saving table: {}.{}".format(DATABASE_NAME, CLUSTERS_TABLE_NAME))
+  clusters_df.write.format("delta").option("overwriteShema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + CLUSTERS_TABLE_NAME)
 
 else:
   print("No data")
