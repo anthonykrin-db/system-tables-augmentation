@@ -136,9 +136,9 @@ if last_job_run_start_time is None:
 else:
   if FORCE_MERGE_INCREMENTAL:
     print("Updating incrementally, using merge")
-    job_runs_df.createOrReplaceTempView("job_runs_tasks_df_table")
+    job_runs_df.createOrReplaceTempView("job_runs_df_table")
     # key field: object_id
-    merge_sql="MERGE INTO {}.{} AS target USING {} AS source ON target.{} = source.{} WHEN MATCHED THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *".format(DATABASE_NAME,JOB_RUNS_TABLE_NAME+"_TASKS", "job_runs_df_table","run_id","run_id")
+    merge_sql="MERGE INTO {}.{} AS target USING {} AS source ON target.{} = source.{} WHEN MATCHED THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *".format(DATABASE_NAME,JOB_RUNS_TABLE_NAME, "job_runs_df_table","run_id","run_id")
     print("merge_sql: ",merge_sql)
     spark.sql(merge_sql)  
   else:
