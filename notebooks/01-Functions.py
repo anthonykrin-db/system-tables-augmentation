@@ -129,6 +129,54 @@ def lookup_last_record_value(db_name, table_name, field_name):
 
 # COMMAND ----------
 
+def count_duplicates(db_name, table_name, field_name):
+  num_dups = 0
+  try:
+    num_dups_sql = f"WITH cte AS ( SELECT {field_name}, ROW_NUMBER() OVER(PARTITION BY {field_name} ORDER BY {field_name}) AS rowno FROM {db_name}.{table_name}.{field_name} ) SELECT COUNT(*) FROM cte WHERE rowno > 1"
+    print("Looking up las record value: ",num_dups_sql)
+    num_dups_df=spark.sql(num_dups_sql)
+    num_dups = num_dups_df.first()[0]
+    print("num_dups: {}",num_dups)
+  except Exception as e:
+    print("Unable to get last value: {}",e)
+  return num_dups
+
+def delete_duplicates(db_name, table_name, field_name):
+  num_dups = count_duplicates(db_name, table_name, field_name)
+  if num_dups == 0:
+    return None
+  del_dups_result=None
+  try:
+    delete_dups_sql=f"WITH cte AS ( SELECT {field_name}, ROW_NUMBER() OVER(PARTITION BY {field_name} ORDER BY {field_name}) AS rowno FROM {db_name}.{table_name}) DELETE FROM {db_name}.{table_name} WHERE {field_name} IN (SELECT {field_name} FROM cte WHERE rowno > 1)"
+    del_dups_result=spark.sql(delete_dups_sql)
+  except Exception as e:
+    print("Unable to delete duplicates: {}",e)
+  return del_dups_result
+
+# COMMAND ----------
+
+def append_merge(last_value_test, df, db_name, table_name, pk_field_name):
+  if last_value_test is None:
+    print(f"No values found.  Creating new table {table_name}.")
+    df.dropDuplicates().write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(db_name + "." + table_name) 
+  else:
+    delete_result=delete_duplicates(db_name,table_name,pk_field_name)
+    print(f"Checking for duplicate values in {table_name} on {pk_field_name}.")
+    display(delete_result)
+    if FORCE_MERGE_INCREMENTAL:
+      print(f"Table values found.  Merging new values into table {table_name}.")
+      df.dropDuplicates().createOrReplaceTempView("tmp")
+      # key field: object_id
+      merge_sql="MERGE INTO {}.{} AS target USING {} AS source ON target.{} = source.{} WHEN NOT MATCHED THEN INSERT *".format(db_name,table_name, "tmp",pk_field_name,pk_field_name)
+      print("Using merge SQL: ",merge_sql)
+      spark.sql(merge_sql)  
+    else:
+      print(f"Table values found. Appending incremental values on table {table_name}.")
+      # Append data and merge schema
+      df.dropDuplicates().write.format("delta").option("mergeSchema", "true").mode("append").saveAsTable(db_name + "." + table_name)
+
+# COMMAND ----------
+
 def json_documents_combined_panda(json_docs, explode_keys=[], exclude_keys=[]):
     # Iterate over the outer array in the JSON data
     dfs = json_documents_to_pandas(json_docs, explode_keys, exclude_keys)

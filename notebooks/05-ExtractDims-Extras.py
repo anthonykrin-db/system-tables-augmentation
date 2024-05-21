@@ -220,22 +220,7 @@ try:
     # Objects will be atonomically written
     print("Saving table: {}.{}".format(DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME))
 
-    if last_modified_at is None:
-      print("Overwriting new table")
-      notebooks_df.dropDuplicates().write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + WORKSPACE_OBJECTS_TABLE_NAME)
-    else:
-      print("Updating incrementally")
-      if FORCE_MERGE_INCREMENTAL:
-        notebooks_df.dropDuplicates().createOrReplaceTempView("notebooks_df_table")
-        # key field: object_id
-        merge_sql="MERGE INTO {}.{} AS target USING {} AS source ON target.{} = source.{} WHEN NOT MATCHED THEN INSERT *".format(DATABASE_NAME,WORKSPACE_OBJECTS_TABLE_NAME, notebooks_df_table,"object_id","object_id")
-        print("merge_sql: {}",merge_sql)
-        spark.sql(merge_sql)   
-      else:
-        print("Appending incrementals")
-        # Append data and merge schema
-        notebooks_df.dropDuplicates().write.format("delta").option("mergeSchema", "true").mode("append").saveAsTable(DATABASE_NAME + "." + WORKSPACE_OBJECTS_TABLE_NAME)
-
+    append_merge(last_modified_at, notebooks_df, DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME, "object_id")
 
   else:
     print("No data")

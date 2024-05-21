@@ -113,7 +113,8 @@ for job_run_json in job_runs_json:
         for task_json in job_run_json["tasks"]:
             task_json["job_id"] = job_run_json["job_id"]
             task_json["run_id"] = job_run_json["run_id"]
-            task_id_raw = str(task_json["run_id"])+"_"+task_json["task_key"]
+            # to make key unique we must add attempt_number
+            task_id_raw = str(task_json["run_id"])+"_"+task_json["task_key"]+"_"+str(task_json["attempt_number"])
             task_json["task_id"] = task_id_raw
             task_index = task_index + 1
             task_json["task_index"] = task_index
@@ -130,21 +131,8 @@ job_runs_df = spark.createDataFrame(runs_combined_df).withColumn("snapshot_time"
 print("Saving table: {}.{}".format(DATABASE_NAME, JOB_RUNS_TABLE_NAME))
 job_runs_df.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOB_RUNS_TABLE_NAME)
 
-if last_job_run_start_time is None:
-  print("Overwriting new table")
-  job_runs_df.dropDuplicates().write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOB_RUNS_TABLE_NAME) 
-else:
-  if FORCE_MERGE_INCREMENTAL:
-    print("Updating incrementally, using merge")
-    job_runs_df.dropDuplicates().createOrReplaceTempView("job_runs_df_table")
-    # key field: object_id
-    merge_sql="MERGE INTO {}.{} AS target USING {} AS source ON target.{} = source.{} WHEN NOT MATCHED THEN INSERT *".format(DATABASE_NAME,JOB_RUNS_TABLE_NAME, "job_runs_df_table","run_id","run_id")
-    print("merge_sql: ",merge_sql)
-    spark.sql(merge_sql)  
-  else:
-    print("Appending incrementals")
-    # Append data and merge schema
-    job_runs_df.dropDuplicates().write.format("delta").option("mergeSchema", "true").mode("append").saveAsTable(DATABASE_NAME + "." + JOB_RUNS_TABLE_NAME)
+append_merge(last_job_run_start_time, job_runs_df, DATABASE_NAME, JOB_RUNS_TABLE_NAME, "run_id")
+
 
 ###################################################
 # write tasks
@@ -153,22 +141,7 @@ dump_pandas_info(tasks_combined_df)
 job_run_tasks_df = spark.createDataFrame(tasks_combined_df).withColumn("snapshot_time", current_timestamp())
 print("Saving table: {}.{}".format(DATABASE_NAME, JOB_RUNS_TABLE_NAME+"_TASKS"))
 
-if last_job_run_start_time is None:
-  print("Overwriting new table")
-  job_run_tasks_df.dropDuplicates().write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(DATABASE_NAME + "." + JOB_RUNS_TABLE_NAME+"_TASKS")
-else:
-  if FORCE_MERGE_INCREMENTAL:
-    print("Updating incrementally, using merge")
-    job_run_tasks_df.dropDuplicates().createOrReplaceTempView("job_runs_tasks_df_table")
-    # key field: object_id
-    merge_sql="MERGE INTO {}.{} AS target USING {} AS source ON target.{} = source.{} WHEN NOT MATCHED THEN INSERT *".format(DATABASE_NAME,JOB_RUNS_TABLE_NAME+"_TASKS", "job_runs_tasks_df_table","task_id","task_id")
-    print("merge_sql: ",merge_sql)
-    spark.sql(merge_sql)  
-  else:
-    print("Appending incrementals")
-    # Append data and merge schema
-    job_run_tasks_df.dropDuplicates().write.format("delta").option("mergeSchema", "true").mode("append").saveAsTable(DATABASE_NAME + "." + JOB_RUNS_TABLE_NAME+"_TASKS")
-
+append_merge(last_job_run_start_time, job_run_tasks_df, DATABASE_NAME, JOB_RUNS_TABLE_NAME+"_TASKS", "task_id")
 
 
 # COMMAND ----------
