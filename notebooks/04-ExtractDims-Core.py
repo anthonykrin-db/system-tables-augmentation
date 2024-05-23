@@ -14,7 +14,8 @@
 # DBTITLE 1,Jobs
 for ENDPOINT_URL, cred in URL_CREDS:
   AUTH_HEADER = {"Authorization" : "Bearer " + cred}
-  print(f"Downloading jobs from workspace: {ENDPOINT_URL}")
+  workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
+  print(f"Downloading jobs from workspace: {workspace_id} at {ENDPOINT_URL}")
 
   # Jobs (one shot)
   response = requests.get(f"{ENDPOINT_URL}{JOBS_URL}", headers=AUTH_HEADER)
@@ -26,7 +27,10 @@ for ENDPOINT_URL, cred in URL_CREDS:
   data=[]
   count=0
   while response_json["jobs"]:
-    data.append(response_json["jobs"])
+    jobs_json = response_json["jobs"]
+    for job_json in jobs_json:
+      job_json["workspace_id"]=workspace_id
+    data.append(jobs_json)
     count=count+1
     if (MAX_PAGES_PER_RUN<count):
       print("Reached max number of pages")
@@ -60,15 +64,19 @@ commmit_data_array(data, ["settings","schedule","deployment","email_notification
 #run_type=WORKFLOW_RUN
 #run_type=SUBMIT_RUN
 
-jobs_runs_incremental_url=None
-last_job_run_start_time = lookup_last_record_value(DATABASE_NAME,JOB_RUNS_TABLE_NAME, "start_time")
-job_runs_json=[]
-tasks_json=[]
+
 count = 0
 
 for ENDPOINT_URL, cred in URL_CREDS:
+  # Reset variables for every workspace
+  jobs_runs_incremental_url=None
+  job_runs_json=[]
+  tasks_json=[]
+  
   AUTH_HEADER = {"Authorization" : "Bearer " + cred}
-  print(f"Downloading jobs from workspace: {ENDPOINT_URL}")
+  workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
+  print(f"Downloading job runs from workspace: {workspace_id} at {ENDPOINT_URL}")
+  last_job_run_start_time = lookup_last_workspace_record_value(DATABASE_NAME,JOB_RUNS_TABLE_NAME, workspace_id, "start_time")
           
   if last_job_run_start_time is None:
     print("Unable to get last job start time.  Getting all job runs.")
@@ -109,11 +117,13 @@ for ENDPOINT_URL, cred in URL_CREDS:
   ###################################################
   # extract tasks
   for job_run_json in job_runs_json:
+      job_run_json["workspace_id"] = workspace_id
       task_index = 0
       if "tasks" in job_run_json:
           for task_json in job_run_json["tasks"]:
               task_json["job_id"] = job_run_json["job_id"]
               task_json["run_id"] = job_run_json["run_id"]
+              task_json["workspace_id"] = workspace_id
               # to make key unique we must add attempt_number
               task_id_raw = str(task_json["run_id"])+"_"+task_json["task_key"]+"_"+str(task_json["attempt_number"])
               task_json["task_id"] = task_id_raw
@@ -124,14 +134,14 @@ for ENDPOINT_URL, cred in URL_CREDS:
           print("No tasks for job run: {}".format(job_run_json["run_id"]))
 
 
-###################################################
-# write job runs
-append_merge(job_runs_json,["settings","state","schedule"],["tasks"],last_job_run_start_time, DATABASE_NAME, JOB_RUNS_TABLE_NAME, "run_id")
+  ###################################################
+  # write job runs
+  append_merge( job_runs_json,["settings","state","schedule"],["tasks"],last_job_run_start_time, DATABASE_NAME, JOB_RUNS_TABLE_NAME, "run_id")
 
 
-###################################################
-# write tasks
-append_merge(tasks_json,["cluster_instance","state"],[],last_job_run_start_time, DATABASE_NAME, JOB_RUNS_TABLE_NAME+"_TASKS", "task_id")
+  ###################################################
+  # write tasks
+  append_merge( tasks_json,["cluster_instance","state"],[],last_job_run_start_time, DATABASE_NAME, JOB_RUNS_TABLE_NAME+"_TASKS", "task_id")
 
 
 # COMMAND ----------
@@ -145,7 +155,8 @@ data = []
 
 for ENDPOINT_URL, cred in URL_CREDS:
   AUTH_HEADER = {"Authorization" : "Bearer " + cred}
-  print(f"Downloading jobs from workspace: {ENDPOINT_URL}")
+  workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
+  print(f"Downloading pinned clusters from workspace: {workspace_id} at {ENDPOINT_URL}")
           
   response = requests.get(f"{ENDPOINT_URL}{CLUSTERS_URL}", headers=AUTH_HEADER)
 
@@ -154,7 +165,10 @@ for ENDPOINT_URL, cred in URL_CREDS:
   response_json = response.json()
 
   if "clusters" in response_json:
-    data.append(response_json["clusters"])
+    cluster_jsons = response_json["clusters"]
+    for cluster_json in cluster_jsons:
+      cluster_json["workspace_id"]=workspace_id
+    data.append(cluster_jsons)
 
 commmit_data_array(data, ["azure_attributes"], [], DATABASE_NAME, CLUSTERS_TABLE_NAME)
 

@@ -17,7 +17,8 @@ data=[]
 
 for ENDPOINT_URL, cred in URL_CREDS:
   AUTH_HEADER = {"Authorization" : "Bearer " + cred}
-  print(f"Downloading delta pipelines from workspace: {ENDPOINT_URL}")
+  workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
+  print(f"Downloading delta pipelines from workspace: {workspace_id} at {ENDPOINT_URL}")
             
   response = requests.get(f"{ENDPOINT_URL}{DLT_PIPELINES_URL}", headers=AUTH_HEADER)
   if response.status_code != 200:
@@ -25,7 +26,10 @@ for ENDPOINT_URL, cred in URL_CREDS:
   response_json = response.json()
   #print(response_json)
   while response_json["statuses"]:
-    data.append(response_json["statuses"])
+    dlt_json_pools = response_json["statuses"]
+    for dlt_json_pool in dlt_json_pools:
+      dlt_json_pool["workspace_id"]=workspace_id
+    data.append(dlt_json_pools)
 
     next_page_token = None
     if "next_page_token" in response_json:
@@ -61,13 +65,18 @@ data=[]
 
 for ENDPOINT_URL, cred in URL_CREDS:
   AUTH_HEADER = {"Authorization" : "Bearer " + cred}
-  print(f"Downloading instance pools from workspace: {ENDPOINT_URL}" ) 
+  workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
+  print(f"Downloading instance pools from workspace: {workspace_id} at {ENDPOINT_URL}")
+
   response = requests.get(f"{ENDPOINT_URL}{INSTANCE_POOLS_URL}", headers=AUTH_HEADER)
   if response.status_code != 200:
     raise Exception(response.text)
-  response_json = response.json()
-  #print(response_json)
-  data.append(response_json["instance_pools"])
+  responses_json = response.json()
+
+  instance_pool_jsons = responses_json["instance_pools"]
+  for instance_pool_json in instance_pool_jsons:
+    instance_pool_json["workspace_id"]=workspace_id
+  data.append(instance_pool_jsons)
 
 commmit_data_array(data, [], [], DATABASE_NAME, INSTANCE_POOLS_TABLE_NAME)
 
@@ -80,8 +89,9 @@ commmit_data_array(data, [], [], DATABASE_NAME, INSTANCE_POOLS_TABLE_NAME)
 data = []
 
 for ENDPOINT_URL, cred in URL_CREDS:
-  AUTH_HEADER = {"Authorization" : "Bearer " + cred}
-  print(f"Downloading dashboards from workspace: {ENDPOINT_URL}")
+  AUTH_HEADER = {"Authorization" : "Bearer " + cred}  
+  workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
+  print(f"Downloading dashboards from workspace: {workspace_id} at {ENDPOINT_URL}")
 
   base_url = f"{ENDPOINT_URL}{DASHBOARDS_URL}/admin?page_size={PAGE_SIZE}"
   empty_response = {'message': 'Page is out of range.'}
@@ -100,7 +110,10 @@ for ENDPOINT_URL, cred in URL_CREDS:
           responses_json = res.json()
           if "results" in responses_json and responses_json["results"]:
             #print(responses_json["results"])
-            data.append(responses_json["results"])
+            dashboard_jsons = responses_json["results"]
+            for dashboard_json in dashboard_jsons:
+              dashboard_json["workspace_id"]=workspace_id
+            data.append(dashboard_jsons)
           #print(f'PAGE {page} done')
           page += 1
 
@@ -115,7 +128,8 @@ data=[]
 
 for ENDPOINT_URL, cred in URL_CREDS:
   AUTH_HEADER = {"Authorization" : "Bearer " + cred}
-  print(f"Downloading warehouses from workspace: {ENDPOINT_URL}")
+  workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
+  print(f"Downloading warehouses from workspace: {workspace_id} at {ENDPOINT_URL}")
 
   response = requests.get(f"{ENDPOINT_URL}{WAREHOUSES_URL}", headers=AUTH_HEADER)
 
@@ -124,7 +138,10 @@ for ENDPOINT_URL, cred in URL_CREDS:
   response_json = response.json()
   # print(response_json)
   if "warehouses" in response_json:
-    data.append(response_json["warehouses"])
+    warehouse_jsons = response_json["warehouses"]
+    for warehouse_json in warehouse_jsons:
+      warehouse_json["workspace_id"]=workspace_id
+    data.append(warehouse_jsons)
 
 commmit_data_array(data,[], [], DATABASE_NAME, WAREHOUSES_TABLE_NAME)
 
@@ -132,12 +149,8 @@ commmit_data_array(data,[], [], DATABASE_NAME, WAREHOUSES_TABLE_NAME)
 
 # DBTITLE 1,notebooks
 
-
-all_objs=[]
-last_modified_at = lookup_last_record_value(DATABASE_NAME,WORKSPACE_OBJECTS_TABLE_NAME, "modified_at")
-
 # Recursive function to get workplace objects
-def get_path_objs(path,url, depth=-1):
+def get_path_objs(path,url, workspace_id, depth=-1):
   params = {}
   if depth==-1:
     params = {
@@ -158,10 +171,18 @@ def get_path_objs(path,url, depth=-1):
   json = []
   if "objects" in response_json:
     json = response_json["objects"]
+    for obj_json in json:
+      obj_json["workspace_id"]=workspace_id
   return json
 
 for ENDPOINT_URL, cred in URL_CREDS:
+  # reset variables
+  all_objs=[]
   AUTH_HEADER = {"Authorization" : "Bearer " + cred}
+  workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
+  print(f"Downloading workspace objects from workspace: {workspace_id} at {ENDPOINT_URL}")
+  last_modified_at = lookup_last_workspace_record_value(DATABASE_NAME,WORKSPACE_OBJECTS_TABLE_NAME,workspace_id, "modified_at"):
+    
   print(f"Downloading workspace objects from workspace: {ENDPOINT_URL}")
           
   # Default rest API no incremental
@@ -173,7 +194,7 @@ for ENDPOINT_URL, cred in URL_CREDS:
     workspace_objects_incremental_url = f"{ENDPOINT_URL}{WORKSPACE_OBJECTS_URL}?notebooks_modified_after="+str(last_modified_at)
 
   # method starts here
-  top_level_objects=get_path_objs("/",workspace_objects_incremental_url,1)
+  top_level_objects=get_path_objs("/",workspace_objects_incremental_url,workspace_id,1)
   # This will ignore directory path
 
   # Print the top-level directory paths
@@ -185,14 +206,14 @@ for ENDPOINT_URL, cred in URL_CREDS:
         dir_name=top_level_object["path"]
         print("Dir name: {}".format(dir_name))
         if dir_name == "/Users":
-          user_dir_json = get_path_objs(dir_name,workspace_objects_incremental_url,1)
+          user_dir_json = get_path_objs(dir_name,workspace_objects_incremental_url,workspace_id,1)
           for user_dir in user_dir_json:
             print("User path: {}".format(user_dir["path"]))
-            user_objsn = get_path_objs(user_dir["path"],workspace_objects_incremental_url)
+            user_objsn = get_path_objs(user_dir["path"],workspace_objects_incremental_url,workspace_id)
             all_objs.append(user_objsn)
         else:
-          other_dir_objs = get_path_objs(dir_name,workspace_objects_incremental_url)
+          other_dir_objs = get_path_objs(dir_name,workspace_objects_incremental_url,workspace_id)
           all_objs.append(other_dir_objs)
 
-append_merge(all_objs,[],[],last_modified_at, DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME, "object_id")
+  append_merge( all_objs,[],[],last_modified_at, DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME, "object_id")
 

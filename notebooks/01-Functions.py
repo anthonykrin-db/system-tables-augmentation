@@ -9,6 +9,7 @@ import requests
 import time
 import json
 import hashlib
+import re
 import pandas as pd
 from datetime import date, datetime, timedelta
 from pyspark.sql.functions import from_unixtime, lit, json_tuple, explode, current_date, current_timestamp
@@ -36,6 +37,12 @@ print(f"FORCE_MERGE_INCREMENTAL: {FORCE_MERGE_INCREMENTAL}")
 
 def get_api_endpoints():
   return [(url, access_token) for url, access_token in WORKSPACE_API_ENDPOINTS.items()]
+
+# COMMAND ----------
+
+def parse_workspaceid_from_api_endpoint_url(url):
+    workspace_id = re.search(r"adb-(\d+)", url).group(1)
+    return workspace_id
 
 # COMMAND ----------
 
@@ -120,10 +127,23 @@ def densify_monthly_config_df(money_struct,field_name):
 
 # COMMAND ----------
 
+# DBTITLE 1,Lookup last value
 def lookup_last_record_value(db_name, table_name, field_name):
   last_value = None
   try:
     last_value_sql = f"SELECT {field_name} FROM {db_name}.{table_name} ORDER BY {field_name} DESC LIMIT 1"
+    print("Looking up last record value: ",last_value_sql)
+    last_value_df=spark.sql(last_value_sql)
+    last_value = last_value_df.first()[0]
+    #print("last_value: {}",last_value)
+  except Exception as e:
+    print("Unable to get last value: {}",e)
+  return last_value
+  
+def lookup_last_workspace_record_value(db_name, table_name, workspace_id, field_name):
+  last_value = None
+  try:
+    last_value_sql = f"SELECT {field_name} FROM {db_name}.{table_name} WHERE workspace_id='{workspace_id}' ORDER BY {field_name} DESC LIMIT 1"
     print("Looking up last record value: ",last_value_sql)
     last_value_df=spark.sql(last_value_sql)
     last_value = last_value_df.first()[0]
@@ -175,7 +195,7 @@ def commmit_data_array(data, include, exclude, db_name, table_name):
 
 # COMMAND ----------
 
-def append_merge(all_objs, include, exclude, last_value_test, db_name, table_name, pk_field_name):
+def append_merge( all_objs, include, exclude, last_value_test, db_name, table_name, pk_field_name):
 
   if len(all_objs)>0:
     # Objects will be combined on the driver node
