@@ -35,6 +35,12 @@ print(f"FORCE_MERGE_INCREMENTAL: {FORCE_MERGE_INCREMENTAL}")
 
 # COMMAND ----------
 
+def update_table_schema(df,db_name,table_name):
+  empty_df = df.filter("1 = 0")
+  empty_df.write.format("delta").option("mergeSchema", "true").mode("append").saveAsTable(db_name + "." + table_name)
+
+# COMMAND ----------
+
 def get_api_endpoints():
   return [(url, access_token) for url, access_token in WORKSPACE_API_ENDPOINTS.items()]
 
@@ -221,10 +227,12 @@ def append_merge( all_objs, include, exclude, db_name, table_name, pk_field_name
     delete_result=delete_duplicates(db_name,table_name,pk_field_name)
     print(f"Checking for duplicate values in {table_name} on {pk_field_name}.")
     display(delete_result)
-    if FORCE_MERGE_INCREMENTAL:
+    if FORCE_MERGE_INCREMENTAL is True:
       print(f"Table values found.  Merging new values into table {table_name}.")
       df.dropDuplicates().createOrReplaceTempView("tmp")
       # key field: object_id
+      # Work around to deal with 
+      update_table_schema(df,db_name,table_name)
       merge_sql="MERGE INTO {}.{} AS target USING {} AS source ON target.{} = source.{} WHEN NOT MATCHED THEN INSERT *".format(db_name,table_name, "tmp",pk_field_name,pk_field_name)
       print("Using merge SQL: ",merge_sql)
       spark.sql(merge_sql)  
