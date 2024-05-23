@@ -136,12 +136,12 @@ for ENDPOINT_URL, cred in URL_CREDS:
 
   ###################################################
   # write job runs
-  append_merge( job_runs_json,["settings","state","schedule"],["tasks"],last_job_run_start_time, DATABASE_NAME, JOB_RUNS_TABLE_NAME, "run_id")
+  append_merge( job_runs_json,["settings","state","schedule"],["tasks"], DATABASE_NAME, JOB_RUNS_TABLE_NAME, "run_id")
 
 
   ###################################################
   # write tasks
-  append_merge( tasks_json,["cluster_instance","state"],[],last_job_run_start_time, DATABASE_NAME, JOB_RUNS_TABLE_NAME+"_TASKS", "task_id")
+  append_merge( tasks_json,["cluster_instance","state"],[], DATABASE_NAME, JOB_RUNS_TABLE_NAME+"_TASKS", "task_id")
 
 
 # COMMAND ----------

@@ -1087,7 +1087,7 @@ SYSTEM_TABLES_REPLACE=[
 # DBTITLE 1,Behavior parameters
 MAX_RESULTS_PER_PAGE = 1000
 # TODO: Make this larger
-MAX_PAGES_PER_RUN = 10000
+MAX_PAGES_PER_RUN = 10
 PAGE_SIZE = 250 # 250 is the max
 # Will force merge on ID rather than append only
 FORCE_MERGE_INCREMENTAL = False

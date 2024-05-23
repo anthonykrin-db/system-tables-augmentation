@@ -195,7 +195,7 @@ def commmit_data_array(data, include, exclude, db_name, table_name):
 
 # COMMAND ----------
 
-def append_merge( all_objs, include, exclude, last_value_test, db_name, table_name, pk_field_name):
+def append_merge( all_objs, include, exclude, db_name, table_name, pk_field_name):
 
   if len(all_objs)>0:
     # Objects will be combined on the driver node
@@ -207,8 +207,14 @@ def append_merge( all_objs, include, exclude, last_value_test, db_name, table_na
   else:
     print("No data")
     return
-
-  if last_value_test is None:
+  
+  #check if table is empty
+  row_count=0
+  try:
+    row_count = spark.table(f"{db_name}.{table_name}").count()
+  except Exception as e:
+    print("Exception counting rows: ",e)
+  if row_count == 0:
     print(f"No values found.  Creating new table {table_name}.")
     df.dropDuplicates().write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(db_name + "." + table_name) 
   else:

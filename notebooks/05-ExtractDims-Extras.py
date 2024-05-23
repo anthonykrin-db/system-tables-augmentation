@@ -181,7 +181,7 @@ for ENDPOINT_URL, cred in URL_CREDS:
   AUTH_HEADER = {"Authorization" : "Bearer " + cred}
   workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
   print(f"Downloading workspace objects from workspace: {workspace_id} at {ENDPOINT_URL}")
-  last_modified_at = lookup_last_workspace_record_value(DATABASE_NAME,WORKSPACE_OBJECTS_TABLE_NAME,workspace_id, "modified_at"):
+  last_modified_at = lookup_last_workspace_record_value(DATABASE_NAME,WORKSPACE_OBJECTS_TABLE_NAME,workspace_id, "modified_at")
     
   print(f"Downloading workspace objects from workspace: {ENDPOINT_URL}")
           
@@ -215,5 +215,5 @@ for ENDPOINT_URL, cred in URL_CREDS:
           other_dir_objs = get_path_objs(dir_name,workspace_objects_incremental_url,workspace_id)
           all_objs.append(other_dir_objs)
 
-  append_merge( all_objs,[],[],last_modified_at, DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME, "object_id")
+  append_merge( all_objs,[],[], DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME, "object_id")
 
