@@ -12,6 +12,9 @@
 # COMMAND ----------
 
 # DBTITLE 1,Jobs
+data=[]
+count=0
+
 for ENDPOINT_URL, cred in URL_CREDS:
   AUTH_HEADER = {"Authorization" : "Bearer " + cred}
   workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
@@ -24,8 +27,6 @@ for ENDPOINT_URL, cred in URL_CREDS:
     raise Exception(response.text)
   response_json = response.json()
 
-  data=[]
-  count=0
   while response_json["jobs"]:
     jobs_json = response_json["jobs"]
     for job_json in jobs_json:
