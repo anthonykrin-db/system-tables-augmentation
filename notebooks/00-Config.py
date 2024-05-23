@@ -4,27 +4,9 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,API Authentication
-# If you want to run this notebook yourself, you need to create a Databricks personal access token,
-# store it using our secrets API, and pass it in through the Spark config, such as this:
-# spark.pat_token {{secrets/query_history_etl/user}}, or Azure Keyvault.
-
-#Databricks secrets API
-#AUTH_HEADER = {"Authorization" : "Bearer " + spark.conf.get("spark.pat_token")}
-#Azure KeyVault
-AUTH_HEADER = {"Authorization" : "Bearer " + dbutils.secrets.get(scope = "hls_demo_secret_scope", key = "fieldeng-pat-token")}
-#Naughty way
-#AUTH_HEADER = {"Authorization" : "Bearer " + "<pat_token>"}
-print(AUTH_HEADER)
-# Expect: {'Authorization': 'Bearer [REDACTED]'}
-
-# COMMAND ----------
-
 # DBTITLE 1,Runtime parameters
 DATABASE_NAME = "finops"
 SCHEMA_NAME = "system_lookups"
-# Lists all objects that a user has manager permissions on.# 
-WORKSPACE_HOST = 'https://adb-984752964297111.11.azuredatabricks.net'
 
 # COMMAND ----------
 
@@ -46,6 +28,17 @@ INFRA_MARKUPS = {
   "02-2024":"0.55",
   "03-2024":"0.55",
   "01-2030":"0.55"
+}
+
+# COMMAND ----------
+
+# DBTITLE 1,Workspace API Endpoints
+# If you want to run this notebook yourself, you need to create a Databricks personal access token,
+# store it using our secrets API, and pass it in through the Spark config, such as this:
+# spark.pat_token {{secrets/query_history_etl/user}}, or Azure Keyvault.
+
+WORKSPACE_API_ENDPOINTS = {
+"https://adb-984752964297111.11.azuredatabricks.net":dbutils.secrets.get(scope = "hls_demo_secret_scope", key = "fieldeng-pat-token")
 }
 
 # COMMAND ----------
@@ -1093,8 +1086,8 @@ SYSTEM_TABLES_REPLACE=[
 
 # DBTITLE 1,Behavior parameters
 MAX_RESULTS_PER_PAGE = 1000
-# TODO: Make thos larger
-MAX_PAGES_PER_RUN = 1000
+# TODO: Make this larger
+MAX_PAGES_PER_RUN = 10000
 PAGE_SIZE = 250 # 250 is the max
 # Will force merge on ID rather than append only
 FORCE_MERGE_INCREMENTAL = False
@@ -1104,24 +1097,24 @@ FORCE_MERGE_INCREMENTAL = False
 # DBTITLE 1,API Config
 # Please ensure the url starts with https and DOES NOT have a slash at the end
 
-WAREHOUSES_URL = "{0}/api/2.0/sql/warehouses".format(WORKSPACE_HOST) ## SQL Warehouses APIs 2.1
+WAREHOUSES_URL = "/api/2.0/sql/warehouses" ## SQL Warehouses APIs 2.1
 # No time parameter option
-JOBS_URL = "{0}/api/2.1/jobs/list".format(WORKSPACE_HOST) ## Jobs & Workflows History API 2.1 
+JOBS_URL = "/api/2.1/jobs/list" ## Jobs & Workflows History API 2.1 
 # No time parameter option
-CLUSTERS_URL = "{0}/api/2.0/clusters/list".format(WORKSPACE_HOST)
+CLUSTERS_URL = "/api/2.0/clusters/list"
 # No time parameter option
-DASHBOARDS_URL = "{0}/api/2.0/preview/sql/dashboards".format(WORKSPACE_HOST) ## Queries and Dashboards API - ❗️in preview, deprecated soon❗️
+DASHBOARDS_URL = "/api/2.0/preview/sql/dashboards" ## Queries and Dashboards API - ❗️in preview, deprecated soon❗️
 # No time parameter option
-WORKSPACE_OBJECTS_URL = "{0}/api/2.0/workspace/list".format(WORKSPACE_HOST)
+WORKSPACE_OBJECTS_URL = "/api/2.0/workspace/list"
 # notebooks_modified_after integer
 # UTC timestamp in milliseconds
-INSTANCE_POOLS_URL = "{0}/api/2.0/instance-pools/list".format(WORKSPACE_HOST)
+INSTANCE_POOLS_URL = "/api/2.0/instance-pools/list"
 # No time parameter option
-DLT_PIPELINES_URL = "{0}/api/2.0/pipelines".format(WORKSPACE_HOST)
+DLT_PIPELINES_URL = "/api/2.0/pipelines"
 # No time parameter option
 # TODO: download pipeline events..
 # /api/2.0/pipelines/{pipeline_id}/events
-JOB_RUNS_URL = "{0}/api/2.1/jobs/runs/list".format(WORKSPACE_HOST) 
+JOB_RUNS_URL = "/api/2.1/jobs/runs/list"
 # start_time_from int64
 # Show runs that started at or after this value. The value must be a UTC timestamp in milliseconds.  
 # start_time_to int64

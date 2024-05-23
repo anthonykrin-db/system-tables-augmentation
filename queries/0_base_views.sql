@@ -18,7 +18,8 @@ jrt.*, j.name as job_name, IF(attempt_number>0,"REPEAT","INITIAL") attempt_type
 FROM finops.system_lookups.job_runs_tasks jrt INNER JOIN finops.system_lookups.jobs j ON (j.job_id=jrt.job_id)
 GROUP BY ALL;
 
-CREATE OR REPLACE VIEW  finops.system_lookups.v_instance_pools as SELECT p.* FROM finops.system_lookups.instance_pools p;
+-- some customers don't have this
+-- CREATE OR REPLACE VIEW  finops.system_lookups.v_instance_pools as SELECT p.* FROM finops.system_lookups.instance_pools p;
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_dlt_pipelines as SELECT d.* FROM finops.system_lookups.dlt_pipelines d;
 

@@ -7,6 +7,14 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Get Url Credentials
+URL_CREDS = get_api_endpoints()
+for url, cred in URL_CREDS:
+  auth_header = {"Authorization" : "Bearer " + cred}
+  print("Workspace URL: {}, auth: {}".format(url,cred))
+
+# COMMAND ----------
+
 spark.sql(f'CREATE DATABASE IF NOT EXISTS {DATABASE_NAME}') 
 spark.sql(f'CREATE SCHEMA IF NOT EXISTS {DATABASE_NAME}.{SCHEMA_NAME}') 
 # optional: add location 

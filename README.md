@@ -66,12 +66,18 @@ INFRA_MARKUPS = {
  "01-2030":"0.55"
 }
 ################
+# Where to execute API calls
+WORKSPACE_API_ENDPOINTS = {
+"https://adb-984752964297111.11.azuredatabricks.net":dbutils.secrets.get(scope = "hls_demo_secret_scope", key = "fieldeng-pat-token")
+}
+################
 # Workspace ID and name pairs.  Unfortunately, this is not yet exposedin system tables.
 WORKSPACE_NAMES = {
 "6024433575559853":"WKSP59853",
 "6058900950367176":"WKSP67176",
 "2574677666339144":"WKSP39144"
 }
+
 ```
 
 ## Backlog

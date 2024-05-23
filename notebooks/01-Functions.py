@@ -34,6 +34,11 @@ print(f"FORCE_MERGE_INCREMENTAL: {FORCE_MERGE_INCREMENTAL}")
 
 # COMMAND ----------
 
+def get_api_endpoints():
+  return [(url, access_token) for url, access_token in WORKSPACE_API_ENDPOINTS.items()]
+
+# COMMAND ----------
+
 def execute_multiline_sql_file(path):
     # Read the contents of the SQL file
     sql_statements = None
@@ -154,7 +159,35 @@ def delete_duplicates(db_name, table_name, field_name):
 
 # COMMAND ----------
 
-def append_merge(last_value_test, df, db_name, table_name, pk_field_name):
+def commmit_data_array(data, include, exclude, db_name, table_name):
+  try:
+    if len(data)>0:
+      combined_df = json_documents_combined_panda(data,include,exclude)
+      dump_pandas_info(combined_df)
+      # print("parsed_json: {}".format(parsed_json))
+      df = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+      print("Saving table: {}.{}".format(db_name, table_name))
+      df.write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(db_name + "." + table_name)
+    else:
+      print("No data")
+  except Exception as e:
+    print("An error occurred: {}".format(str(e)))
+
+# COMMAND ----------
+
+def append_merge(all_objs, include, exclude, last_value_test, db_name, table_name, pk_field_name):
+
+  if len(all_objs)>0:
+    # Objects will be combined on the driver node
+    combined_df=json_documents_combined_panda(all_objs,include,exclude)
+    dump_pandas_info(combined_df)
+    # print("parsed_json: {}".format(parsed_json))
+    df = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+    # Objects will be atonomically written
+  else:
+    print("No data")
+    return
+
   if last_value_test is None:
     print(f"No values found.  Creating new table {table_name}.")
     df.dropDuplicates().write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(db_name + "." + table_name) 

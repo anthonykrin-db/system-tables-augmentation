@@ -3,16 +3,12 @@ FROM finops.system_lookups.v_system_usage_cost usage
 LIMIT 100;
 
 -- 0
-SELECT COUNT (DISTINCT usage.usage_metadata["job_id"]) as NUM_JOBS
+SELECT COUNT (DISTINCT usage.usage_metadata["job_run_id"]) as NUM_JOBS
 FROM finops.system_lookups.v_system_usage_cost usage;
 
 
 SELECT COUNT (DISTINCT *) as NUM_JOBS_2
 FROM finops.system_lookups.v_jobs;
-
--- 0
-SELECT COUNT (DISTINCT usage.usage_metadata["run_id"]) as NUM_JOB_RUNS
-FROM finops.system_lookups.v_system_usage_cost usage;
 
 -- 0
 SELECT COUNT (DISTINCT *) as NUM_JOB_RUNS_2

@@ -1,6 +1,6 @@
 
 -- 58
-SELECT count(*) cnt FROM finops.system_lookups.v_shared_cluster_creator_job_duration;
+SELECT count(*) cnt FROM finops.system_lookups.v_job_creator_duration;
 
 -- 0: unmatched job runs
 SELECT count(*) unmatched_job_runs
