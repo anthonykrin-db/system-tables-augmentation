@@ -62,29 +62,29 @@ WITH daily_cluster_cost AS (
     SUM(c.est_total_cost) AS day_cluster_est_total_cost
     FROM finops.system_lookups.v_system_usage_cost c 
     GROUP BY ALL
+),
+job_duration AS (
+SELECT 
+    jrt.cluster_id, jrt.usage_date, 
+    sum(jrt.execution_duration) day_cluster_task_exec_duration
+    FROM finops.system_lookups.v_job_runs_tasks jrt 
+    GROUP BY ALL
+),
+cluster_details AS (
+    SELECT     max(cluster_name) cluster_name,
+    max(data_security_mode) cluster_data_security_mode,
+    max(cluster_source) cluster_source,
+    cluster_id
+    FROM finops.system_lookups.v_clusters
+    GROUP BY ALL
 )
-    SELECT 
-    w.workspace_id, 
-    max(w.workspace_name) workspace_name,
-    jrt.cluster_id, 
-    max(cl.cluster_name) cluster_name,
-    max(cl.data_security_mode) cluster_data_security_mode,
-    max(cl.cluster_source) cluster_source,
-    c.usage_date,
-    -- all tasks on this clsuter, duration, each day
-    sum(jrt.execution_duration) day_cluster_task_exec_duration,
-    -- total costs for this cluster, each day
-    c.day_cluster_est_infra_cost,
-    c.day_cluster_est_dbu_cost,
-    c.day_cluster_est_total_cost
-    FROM daily_cluster_cost c 
-    INNER JOIN finops.system_lookups.v_job_runs_tasks jrt 
-      on (c.cluster_id=jrt.cluster_id AND jrt.usage_date = c.usage_date)
-    INNER JOIN finops.system_lookups.v_clusters cl
-      on (jrt.cluster_id=cl.cluster_id)
-    INNER JOIN finops.system_lookups.v_workspaces w 
-      on (c.workspace_id=w.workspace_id)
-    GROUP BY ALL;
+SELECT dcc.*, 
+cd.cluster_name,cd.cluster_data_security_mode,cd.cluster_source,
+jd.day_cluster_task_exec_duration 
+FROM cluster_details cd
+INNER JOIN daily_cluster_cost dcc ON cd.cluster_id = dcc.cluster_id
+INNER JOIN job_duration jd ON (jd.cluster_id = dcc.cluster_id AND jd.usage_date = dcc.usage_date)
+
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_job_weighted_cost AS 
 SELECT 
