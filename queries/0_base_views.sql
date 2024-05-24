@@ -25,11 +25,23 @@ CREATE OR REPLACE VIEW  finops.system_lookups.v_dlt_pipelines as SELECT d.* FROM
 
 -- cluster specifications change continually as noted by change_time
 -- for cluster_id + time we can figure out actual configuration at that time
-CREATE OR REPLACE VIEW  finops.system_lookups.v_clusters as 
+--- get lastest cluster by ID
+
+CREATE OR REPLACE VIEW  finops.system_lookups.v_clusters_all as 
 SELECT c.cluster_id, c.cluster_name, coalesce(cp.data_security_mode,"") data_security_mode, 
 cp.* EXCEPT(cluster_id,cluster_name,data_security_mode)
 FROM (SELECT DISTINCT cluster_id, cluster_name FROM finops.system_compute.clusters) c
 LEFT OUTER JOIN finops.system_lookups.clusters_pinned cp ON c.cluster_id=cp.cluster_id;
+
+-- causes cardinality issues in some environments where cluster specs are continually changing
+CREATE OR REPLACE VIEW  finops.system_lookups.v_clusters as 
+WITH cte AS ( 
+  SELECT *,
+  ROW_NUMBER() OVER(PARTITION BY CLUSTER_ID ORDER BY last_activity_time DESC) AS rowno 
+FROM finops.system_lookups.v_clusters_all) 
+SELECT * EXCEPT (rowno)
+FROM cte WHERE rowno == 1;
+
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_dashboards_preview as SELECT c.* FROM finops.system_lookups.dashboards_preview c;
 

@@ -83,7 +83,7 @@ cd.cluster_name,cd.cluster_data_security_mode,cd.cluster_source,
 jd.day_cluster_task_exec_duration 
 FROM cluster_details cd
 INNER JOIN daily_cluster_cost dcc ON cd.cluster_id = dcc.cluster_id
-INNER JOIN job_duration jd ON (jd.cluster_id = dcc.cluster_id AND jd.usage_date = dcc.usage_date)
+INNER JOIN job_duration jd ON (jd.cluster_id = dcc.cluster_id AND jd.usage_date = dcc.usage_date);
 
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_job_weighted_cost AS 
@@ -100,10 +100,10 @@ CREATE OR REPLACE VIEW  finops.system_lookups.v_job_run_weighted_cost AS
 SELECT 
 job_run_duration.*,
 round(sum(job_run_duration.job_run_exec_duration) / 1000 /60,1) cluster_day_exec_duration_mins,
-round(min(cluster_cost_duration.day_cluster_est_infra_cost)*(sum(job_run_duration.job_run_exec_duration)/min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as infra_cost,
-round(min(cluster_cost_duration.day_cluster_est_dbu_cost)*(sum(job_run_duration.job_run_exec_duration)/min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as dbu_cost,
-round(min(cluster_cost_duration.day_cluster_est_total_cost)*(sum(job_run_duration.job_run_exec_duration)/min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as total_cost,
-round(min(cluster_cost_duration.day_cluster_est_total_cost)*(sum(job_run_duration.job_run_exec_duration)/min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as exec_duration_weighted_cluster_cost
+round(min(cluster_cost_duration.day_cluster_est_infra_cost)*try_divide(sum(job_run_duration.job_run_exec_duration),min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as infra_cost,
+round(min(cluster_cost_duration.day_cluster_est_dbu_cost)*try_divide(sum(job_run_duration.job_run_exec_duration),min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as dbu_cost,
+round(min(cluster_cost_duration.day_cluster_est_total_cost)*try_divide(sum(job_run_duration.job_run_exec_duration),min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as total_cost,
+round(min(cluster_cost_duration.day_cluster_est_total_cost)*try_divide(sum(job_run_duration.job_run_exec_duration),min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as exec_duration_weighted_cluster_cost
 FROM finops.system_lookups.v_job_run_duration job_run_duration
 INNER JOIN finops.system_lookups.v_cluster_cost AS cluster_cost_duration
 ON (job_run_duration.cluster_id=cluster_cost_duration.cluster_id AND job_run_duration.usage_date=cluster_cost_duration.usage_date )
@@ -119,7 +119,7 @@ SELECT creator_duration.*,
 -- min(cluster_cost_duration.day_cluster_est_dbu_cost)*exec_duration_cluster_pct as exec_duration_weighted_cluster_cost
 -- WE ARE CREATING AN ADDITIVE, COMPOSABLE MEASURE OF COST
 round(sum(creator_duration.job_creator_exec_duration) / 1000 /60,1) cluster_day_exec_duration_mins,
-round(min(cluster_cost_duration.day_cluster_est_total_cost)*(sum(creator_duration.job_creator_exec_duration)/min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as exec_duration_weighted_cluster_cost
+round(min(cluster_cost_duration.day_cluster_est_total_cost)*try_divide(sum(creator_duration.job_creator_exec_duration),min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as exec_duration_weighted_cluster_cost
 FROM finops.system_lookups.v_job_creator_duration creator_duration
 INNER JOIN finops.system_lookups.v_cluster_cost AS cluster_cost_duration
 ON (creator_duration.cluster_id=cluster_cost_duration.cluster_id AND creator_duration.usage_date=cluster_cost_duration.usage_date )
@@ -133,7 +133,7 @@ SELECT job_run_creator,
 DATE(creator_weighted_cost.usage_date) usage_date,
 sum(exec_duration_weighted_cluster_cost) creator_exec_duration_weighted_cluster_cost,
 -- use min to avoid double counting.  This measure cannot be aggregated
-ROUND(creator_exec_duration_weighted_cluster_cost/min(tots.total_exec_duration_weighted_cluster_cost) ,4) as daily_pct_cost
+ROUND(try_divide(creator_exec_duration_weighted_cluster_cost,min(tots.total_exec_duration_weighted_cluster_cost)) ,4) as daily_pct_cost
 FROM finops.system_lookups.v_job_creator_weighted_cost creator_weighted_cost
 -- cartesian
 INNER JOIN (
