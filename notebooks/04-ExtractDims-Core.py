@@ -65,6 +65,26 @@ commmit_data_array(data, ["settings","schedule","deployment","email_notification
 #run_type=WORKFLOW_RUN
 #run_type=SUBMIT_RUN
 
+def extract_job_run_tasks(job_run_json, workspace_id):
+    # extract tasks
+  tasks_json=[]
+  job_run_json["workspace_id"] = workspace_id
+  job_run_json["id"] = str(workspace_id)+"_"+str(job_run_json["run_id"])
+  task_index = 0
+  if "tasks" in job_run_json:
+    for task_json in job_run_json["tasks"]:
+      task_json["job_id"] = job_run_json["job_id"]
+      task_json["run_id"] = job_run_json["run_id"]
+      task_json["workspace_id"] = workspace_id
+      # to make key unique we must add attempt_number
+      task_id_raw = str(workspace_id)+"_"+str(task_json["run_id"])+"_"+task_json["task_key"]+"_"+str(task_json["attempt_number"])
+      task_json["task_id"] = task_id_raw
+      task_index = task_index + 1
+      task_json["task_index"] = task_index
+      tasks_json.append(task_json)
+  else:
+    print("No tasks for job run: {}".format(job_run_json["run_id"]))
+  return tasks_json
 
 count = 0
 
@@ -73,6 +93,8 @@ for ENDPOINT_URL, cred in URL_CREDS:
   jobs_runs_incremental_url=None
   job_runs_json=[]
   tasks_json=[]
+  uncommitted_job_runs_count=0
+  job_run_count=0
   
   AUTH_HEADER = {"Authorization" : "Bearer " + cred}
   workspace_id = parse_workspaceid_from_api_endpoint_url(ENDPOINT_URL)
@@ -87,19 +109,44 @@ for ENDPOINT_URL, cred in URL_CREDS:
     print("Getting workspace objects after last modified at time: ",str(last_job_run_start_time))
     jobs_runs_incremental_url = f"{ENDPOINT_URL}{JOB_RUNS_URL}?expand_tasks=true&start_time_from={last_job_run_start_time}"
 
-  # Job runs (fetches by page, with tasks)
-  # Supports time based fetching
-  response = requests.get(f"{ENDPOINT_URL}{JOB_RUNS_URL}?expand_tasks=true", headers=AUTH_HEADER)
+  # Job runs (fetches by page, with tasks)]
+  response = requests.get(jobs_runs_incremental_url, headers=AUTH_HEADER)
 
   if response.status_code != 200:
     raise Exception(response.text)
   response_json = response.json()
 
-  print("Pages: ")
   while response_json is not None and "runs" in response_json:
-    for job_run_json in response_json["runs"]:
-      job_runs_json.append(job_run_json)
+    for resp_runs in response_json["runs"]:
+      uncommitted_job_runs_count=uncommitted_job_runs_count+1
+      if isinstance(resp_runs, list):
+        for job_run_json in resp_runs:
+          data=extract_job_run_tasks(job_run_json,workspace_id)
+          for task in data:
+            tasks_json.append(task)
+          job_run_count=job_run_count+1
+          # Save json with tasks stripped
+          job_runs_json.append(job_run_json)
+      else:
+        job_run_json=resp_runs
+        data=extract_job_run_tasks(job_run_json,workspace_id)
+        for task in data:
+          tasks_json.append(task)
+        job_run_count=job_run_count+1
+        # Save json with tasks stripped
+        job_runs_json.append(job_run_json)
 
+      if uncommitted_job_runs_count>JOB_RUNS_COMMIT_BATCH_SIZE:
+        ###################################################
+        # Checkpoint writes to avoid OOMs
+        append_merge( job_runs_json,["settings","state","schedule"],["tasks"], DATABASE_NAME, JOB_RUNS_TABLE_NAME, "id",False)
+        append_merge( tasks_json,["cluster_instance","state"],[], DATABASE_NAME, JOB_RUNS_TABLE_NAME+"_TASKS", "task_id",False)
+        # reset resources
+        uncommitted_job_runs_count=0
+        job_runs_json=[]
+        tasks_json=[]
+
+    # Get more
     next_page_token = None
     count = count+1
     if (MAX_PAGES_PER_RUN<count):
@@ -107,7 +154,8 @@ for ENDPOINT_URL, cred in URL_CREDS:
       break
     if "next_page_token" in response_json:
       next_page_token=response_json["next_page_token"]
-      url=f"{ENDPOINT_URL}{JOB_RUNS_URL}?expand_tasks=true&page_token={next_page_token}"
+      #print(f"Page: {count}, token: {next_page_token}")
+      url=jobs_runs_incremental_url+f"&page_token={next_page_token}"
       #print("Calling: {}".format(url))
       response = requests.get(url, headers=AUTH_HEADER)
       response_json = response.json()
@@ -116,33 +164,10 @@ for ENDPOINT_URL, cred in URL_CREDS:
       break
 
   ###################################################
-  # extract tasks
-  for job_run_json in job_runs_json:
-      job_run_json["workspace_id"] = workspace_id
-      task_index = 0
-      if "tasks" in job_run_json:
-          for task_json in job_run_json["tasks"]:
-              task_json["job_id"] = job_run_json["job_id"]
-              task_json["run_id"] = job_run_json["run_id"]
-              task_json["workspace_id"] = workspace_id
-              # to make key unique we must add attempt_number
-              task_id_raw = str(task_json["run_id"])+"_"+task_json["task_key"]+"_"+str(task_json["attempt_number"])
-              task_json["task_id"] = task_id_raw
-              task_index = task_index + 1
-              task_json["task_index"] = task_index
-              tasks_json.append(task_json)
-      else:
-          print("No tasks for job run: {}".format(job_run_json["run_id"]))
-
-
-  ###################################################
-  # write job runs
-  append_merge( job_runs_json,["settings","state","schedule"],["tasks"], DATABASE_NAME, JOB_RUNS_TABLE_NAME, "run_id")
-
-
-  ###################################################
-  # write tasks
-  append_merge( tasks_json,["cluster_instance","state"],[], DATABASE_NAME, JOB_RUNS_TABLE_NAME+"_TASKS", "task_id")
+  # Final writes if there are more
+  print("Final commit of job runs and tasks")
+  append_merge( job_runs_json,["settings","state","schedule"],["tasks"], DATABASE_NAME, JOB_RUNS_TABLE_NAME, "run_id",True)
+  append_merge( tasks_json,["cluster_instance","state"],[], DATABASE_NAME, JOB_RUNS_TABLE_NAME+"_TASKS", "task_id",True)
 
 
 # COMMAND ----------

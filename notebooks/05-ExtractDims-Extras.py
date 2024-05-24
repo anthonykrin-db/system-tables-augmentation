@@ -215,5 +215,5 @@ for ENDPOINT_URL, cred in URL_CREDS:
           other_dir_objs = get_path_objs(dir_name,workspace_objects_incremental_url,workspace_id)
           all_objs.append(other_dir_objs)
 
-  append_merge( all_objs,[],[], DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME, "object_id")
+  append_merge( all_objs,[],[], DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME, "object_id",True)
 

@@ -150,10 +150,10 @@ def lookup_last_workspace_record_value(db_name, table_name, workspace_id, field_
   last_value = None
   try:
     last_value_sql = f"SELECT {field_name} FROM {db_name}.{table_name} WHERE workspace_id='{workspace_id}' ORDER BY {field_name} DESC LIMIT 1"
-    print("Looking up last record value: ",last_value_sql)
+    #print("Looking up last record value: ",last_value_sql)
     last_value_df=spark.sql(last_value_sql)
     last_value = last_value_df.first()[0]
-    #print("last_value: {}",last_value)
+    print(f"Found most recent value on  {db_name}.{table_name} for workspace ({workspace_id}): {last_value}")
   except Exception as e:
     print("Unable to get last value: {}",e)
   return last_value
@@ -166,10 +166,24 @@ def count_duplicates(db_name, table_name, field_name):
     num_dups_sql = f"WITH cte AS ( SELECT {field_name}, ROW_NUMBER() OVER(PARTITION BY {field_name} ORDER BY {field_name}) AS rowno FROM {db_name}.{table_name} ) SELECT COUNT(*) FROM cte WHERE rowno > 1"
     num_dups_df=spark.sql(num_dups_sql)
     num_dups = num_dups_df.first()[0]
-    print("Found {} duplicate records",num_dups)
+    if num_dups>0:
+      print(f"Found {num_dups} duplicate records")
   except Exception as e:
     print("Unable to get last value: {}",e)
   return num_dups
+
+def print_duplicates(db_name, table_name, field_name):
+  num_dups = count_duplicates(db_name, table_name, field_name)
+  if num_dups>0:
+    print(f"Found {num_dups} duplicate records")
+  del_dups_result=None
+  try:
+    print_dups_sql=f"WITH cte AS ( SELECT *, ROW_NUMBER() OVER(PARTITION BY {field_name} ORDER BY {field_name}) AS rowno FROM {db_name}.{table_name}) SELECT * FROM cte  WHERE rowno > 1"
+    #print(f"print_dups_sql: {print_dups_sql}")
+    display(spark.sql(print_dups_sql))
+  except Exception as e:
+    print("Unable to print duplicates: {}",e)
+
 
 def delete_duplicates(db_name, table_name, field_name):
   num_dups = count_duplicates(db_name, table_name, field_name)
@@ -201,32 +215,38 @@ def commmit_data_array(data, include, exclude, db_name, table_name):
 
 # COMMAND ----------
 
-def append_merge( all_objs, include, exclude, db_name, table_name, pk_field_name):
+def append_merge( all_objs, include, exclude, db_name, table_name, pk_field_name, isFinal:bool=True):
 
-  if len(all_objs)>0:
-    # Objects will be combined on the driver node
-    combined_df=json_documents_combined_panda(all_objs,include,exclude)
-    dump_pandas_info(combined_df)
-    # print("parsed_json: {}".format(parsed_json))
-    df = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
-    # Objects will be atonomically written
-  else:
+  if len(all_objs)==0:
     print("No data")
     return
   
+  # Objects will be combined on the driver node
+  combined_na_df=json_documents_combined_panda(all_objs,include,exclude)
+  combined_df = combined_na_df.dropna(axis='columns', how='all')
+
+  if isFinal is True:
+    #print("Final is true.")
+    dump_pandas_info(combined_df)
+
+  # print("parsed_json: {}".format(parsed_json))
+  df = spark.createDataFrame(combined_df).withColumn("snapshot_time", current_timestamp())
+  # Objects will be atonomically written
+
   #check if table is empty
   row_count=0
   try:
     row_count = spark.table(f"{db_name}.{table_name}").count()
   except Exception as e:
-    print("Exception counting rows: ",e)
+    print(f"Exception counting rows, table {db_name}.{table_name} may not exist.")
   if row_count == 0:
     print(f"No values found.  Creating new table {table_name}.")
     df.dropDuplicates().write.format("delta").option("overwriteSchema", "true").mode("overwrite").saveAsTable(db_name + "." + table_name) 
   else:
-    delete_result=delete_duplicates(db_name,table_name,pk_field_name)
-    print(f"Checking for duplicate values in {table_name} on {pk_field_name}.")
-    display(delete_result)
+    #print(f"Checking for duplicate values in {table_name} on {pk_field_name}.")    
+    delete_dupes_result=delete_duplicates(db_name,table_name,pk_field_name)
+    display(delete_dupes_result)
+    print_duplicates(db_name,table_name,pk_field_name)
     if FORCE_MERGE_INCREMENTAL is True:
       print(f"Table values found.  Merging new values into table {table_name}.")
       df.dropDuplicates().createOrReplaceTempView("tmp")
@@ -237,7 +257,7 @@ def append_merge( all_objs, include, exclude, db_name, table_name, pk_field_name
       print("Using merge SQL: ",merge_sql)
       spark.sql(merge_sql)  
     else:
-      print(f"Table values found. Appending incremental values on table {table_name}.")
+      print(f"Appending {df.count()} rows on table {table_name}.")
       # Append data and merge schema
       df.dropDuplicates().write.format("delta").option("mergeSchema", "true").mode("append").saveAsTable(db_name + "." + table_name)
 
@@ -256,18 +276,25 @@ def json_documents_to_pandas(json_docs, explode_keys=[], exclude_keys=[]):
         if isinstance(doc, list):
             # doc is list...
             for docEl in doc:
-                dataEl = get_safe_json_kv(docEl, explode_keys, exclude_keys)
-                df = pd.DataFrame(dataEl)
-                dfs.append(df)
+                if isinstance(docEl,dict):
+                    dataEl = get_safe_json_kv(docEl, explode_keys, exclude_keys)
+                    df = pd.DataFrame(dataEl)
+                    dfs.append(df)
+                else:
+                    print(f"INVALID document found (1): {docEl}")
         else:
             if isinstance(doc, str):
                 # we should never be here
+                print(f"INVALID document found (2): {doc}")
                 data = doc
             else:
-                # fix this error: ValueError: If using all scalar values, you must pass an index
-                data = get_safe_json_kv(doc, explode_keys, exclude_keys)
-                df = pd.DataFrame(data)
-                dfs.append(df)
+                if isinstance(doc,dict):
+                    # fix this error: ValueError: If using all scalar values, you must pass an index
+                    data = get_safe_json_kv(doc, explode_keys, exclude_keys)
+                    df = pd.DataFrame(data)
+                    dfs.append(df)
+                else:
+                    print(f"INVALID document found (3): {doc}")
     return dfs
 
 # COMMAND ----------
@@ -275,10 +302,10 @@ def json_documents_to_pandas(json_docs, explode_keys=[], exclude_keys=[]):
 # DBTITLE 1,dump out panda metadata
 import pandas as pd
 
-def dump_pandas_info(df):
-  print("Number of rows:", df.shape[0])
+def dump_pandas_info(pdf):
+  print("Number of rows:", pdf.shape[0])
   print("\nColumn metadata:")
-  df.info()
+  pdf.info()
 
 # COMMAND ----------
 
@@ -290,28 +317,24 @@ def dump_pandas_info(df):
 def get_safe_json_kv(doc, explode_keys=[], exclude_keys=[]):
     data = {}
 
-    if isinstance(doc, dict):
-        for key, value in doc.items():
-            if explode_keys and key in explode_keys:
-                # print("explode_keys: {}, key: {}".format(explode_keys,key))
-                if value.items():
-                    for sub_key, sub_value in value.items():
-                        # print("sub_key: {}, sub_value: {}".format(sub_key,sub_value))
-                        safe_key = make_spark_column_name(sub_key)
-                        safe_value = make_sdf_safe_value(sub_value)
-                        # print("safe_key: {} not in exclude_keys: {} ".format(safe_key,exclude_keys))
-                        if (safe_key not in exclude_keys):
-                            data[safe_key] = [safe_value]
-            else:
-                # Get cleaned column names
-                safe_key = make_spark_column_name(key)
-                safe_value = make_sdf_safe_value(value)
-                # print("safe_key: {} not in exclude_keys: {} ".format(safe_key,exclude_keys))
-                if (safe_key not in exclude_keys):
-                    data[safe_key] = [safe_value]
-    else:
-        print("Doc is not a dict: {}".format(doc))
-        data["default"] = doc
+    for key, value in doc.items():
+        if explode_keys and key in explode_keys:
+            # print("explode_keys: {}, key: {}".format(explode_keys,key))
+            if value.items():
+                for sub_key, sub_value in value.items():                        
+                    # print("sub_key: {}, sub_value: {}".format(sub_key,sub_value))
+                    safe_key = make_spark_column_name(sub_key)
+                    safe_value = make_sdf_safe_value(sub_value)
+                    # print("safe_key: {} not in exclude_keys: {} ".format(safe_key,exclude_keys))
+                    if (safe_key not in exclude_keys):
+                        data[safe_key] = [safe_value]
+        else:
+            # Get cleaned column names
+            safe_key = make_spark_column_name(key)
+            safe_value = make_sdf_safe_value(value)
+            # print("safe_key: {} not in exclude_keys: {} ".format(safe_key,exclude_keys))
+            if (safe_key not in exclude_keys):
+                data[safe_key] = [safe_value]
 
     return data
 
@@ -463,11 +486,13 @@ def coalesce_column_types(df):
         elif most_complex_type == np.float64:
             df[column] = df[column].apply(lambda x: np.float64(x) if pd.notnull(x) else x)
         elif most_complex_type == str:
-            df[column] = df[column].astype(str)
+            df[column] = df[column].apply(lambda x: str(x) if pd.notnull(x) else x)
         elif most_complex_type == list:
             df[column] = df[column].apply(lambda x: x if isinstance(x, list) else [x])
         elif most_complex_type == dict:
             df[column] = df[column].apply(lambda x: x if isinstance(x, dict) else {'value': x})
+        else:
+            df[column] = df[column].apply(lambda x: str(x) if pd.notnull(x) else x)
     
     return df
 
@@ -479,19 +504,33 @@ import pandas as pd
 
 def parse_documents(json_documents):
     results = []
-    
     for doc in json_documents:
-        results.append(parse_doc(doc))
+        if not isinstance(doc, list) and not isinstance(doc, dict):
+            print(f"Parsing document of type: {type(doc)}, {doc}.")        
+            doc=json.loads(doc)
+
+        if isinstance(doc, list):
+            for docEl in doc:
+                results.append(parse_doc(docEl))
+        elif isinstance(doc, dict):
+            results.append(parse_doc(doc))
+        else:
+            print(f"Unable to parse: {doc}")
+
     return results
 
 #Unnest deeply nested
 
-def parse_doc(doc):
+def parse_doc(doc, level:int = 1):
     parsed_doc = {}
+    next_level = level+1
+    if (next_level>4):
+        print(f"Reached maximum recursion with {type(doc)} element: {doc}")
+        return str(doc)
     
     if isinstance(doc, str):
         parsed_doc = doc
-    elif hasattr(doc, 'items'):
+    elif isinstance(doc, dict) or hasattr(doc, 'items'):
         for key, value in doc.items():
             if isinstance(value, bool):
                 value = str(value).lower()
@@ -513,9 +552,12 @@ def parse_doc(doc):
         elif isinstance(doc, (int, float)):
             parsed_doc = doc
         elif isinstance(doc, list):
-            parsed_doc = [parse_doc(item) for item in doc]
+            parsed_doc = [parse_doc(item,next_level) for item in doc]
         elif isinstance(doc, dict):
-            parsed_doc = {key: parse_doc(value) for key, value in doc.items()}
+            parsed_doc = {key: parse_doc(value,next_level) for key, value in doc.items()}
+        else:
+            parsed_doc = doc
+            #parsed_doc = parse_doc(json.loads(doc),next_level)
     
     return parsed_doc
 
