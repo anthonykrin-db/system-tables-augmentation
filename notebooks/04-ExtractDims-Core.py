@@ -27,6 +27,10 @@ for ENDPOINT_URL, cred in URL_CREDS:
     raise Exception(response.text)
   response_json = response.json()
 
+  if not "jobs" in response_json:
+    print("No jobs")
+    continue
+
   while response_json["jobs"]:
     jobs_json = response_json["jobs"]
     for job_json in jobs_json:

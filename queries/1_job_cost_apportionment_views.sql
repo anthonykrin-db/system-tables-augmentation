@@ -63,6 +63,7 @@ CREATE OR REPLACE VIEW finops.system_lookups.v_cluster_cost AS
     -- all tasks on this clsuter, duration, each day
     SUM(jrt.execution_duration) AS day_cluster_task_exec_duration,
     -- total costs for this cluster, each day
+    SUM(c.est_infra_cost) AS day_cluster_est_infra_cost,
     SUM(c.est_dbu_cost) AS day_cluster_est_dbu_cost,
     SUM(c.est_total_cost) AS day_cluster_est_total_cost
     FROM finops.system_lookups.v_system_usage_cost c 
@@ -91,6 +92,9 @@ CREATE OR REPLACE VIEW  finops.system_lookups.v_job_run_weighted_cost AS
 SELECT 
 job_run_duration.*,
 round(sum(job_run_duration.job_run_exec_duration) / 1000 /60,1) cluster_day_exec_duration_mins,
+round(min(cluster_cost_duration.day_cluster_est_infra_cost)*(sum(job_run_duration.job_run_exec_duration)/min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as infra_cost,
+round(min(cluster_cost_duration.day_cluster_est_dbu_cost)*(sum(job_run_duration.job_run_exec_duration)/min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as dbu_cost,
+round(min(cluster_cost_duration.day_cluster_est_total_cost)*(sum(job_run_duration.job_run_exec_duration)/min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as total_cost,
 round(min(cluster_cost_duration.day_cluster_est_total_cost)*(sum(job_run_duration.job_run_exec_duration)/min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as exec_duration_weighted_cluster_cost
 FROM finops.system_lookups.v_job_run_duration job_run_duration
 INNER JOIN finops.system_lookups.v_cluster_cost AS cluster_cost_duration
