@@ -52,31 +52,39 @@ CREATE OR REPLACE VIEW finops.system_lookups.v_job_creator_duration AS
 
 -- intermediary query 2 (costs and duration across all creators)
 CREATE OR REPLACE VIEW finops.system_lookups.v_cluster_cost AS 
-    SELECT 
-    w.workspace_id, 
-    w.workspace_name,
-    jrt.cluster_id, 
-    cl.cluster_name,
-    cl.data_security_mode cluster_data_security_mode,
-    cl.cluster_source,
-    c.usage_date,
+WITH daily_cluster_cost AS (
+    SELECT c.usage_date, c.usage_metadata["cluster_id"] cluster_id,
+    c.workspace_id,
     -- all tasks on this clsuter, duration, each day
-    SUM(jrt.execution_duration) AS day_cluster_task_exec_duration,
     -- total costs for this cluster, each day
     SUM(c.est_infra_cost) AS day_cluster_est_infra_cost,
     SUM(c.est_dbu_cost) AS day_cluster_est_dbu_cost,
     SUM(c.est_total_cost) AS day_cluster_est_total_cost
     FROM finops.system_lookups.v_system_usage_cost c 
+    GROUP BY ALL
+)
+    SELECT 
+    w.workspace_id, 
+    max(w.workspace_name) workspace_name,
+    jrt.cluster_id, 
+    max(cl.cluster_name) cluster_name,
+    max(cl.data_security_mode) cluster_data_security_mode,
+    max(cl.cluster_source) cluster_source,
+    c.usage_date,
+    -- all tasks on this clsuter, duration, each day
+    sum(jrt.execution_duration) day_cluster_task_exec_duration,
+    -- total costs for this cluster, each day
+    c.day_cluster_est_infra_cost,
+    c.day_cluster_est_dbu_cost,
+    c.day_cluster_est_total_cost
+    FROM daily_cluster_cost c 
     INNER JOIN finops.system_lookups.v_job_runs_tasks jrt 
-      on (c.usage_metadata["cluster_id"]=jrt.cluster_id AND DATE(FROM_UNIXTIME(jrt.start_time / 1000)) = c.usage_date)
+      on (c.cluster_id=jrt.cluster_id AND jrt.usage_date = c.usage_date)
     INNER JOIN finops.system_lookups.v_clusters cl
       on (jrt.cluster_id=cl.cluster_id)
-    INNER JOIN finops.system_lookups.v_job_runs jr 
-      on (jr.run_id=jrt.run_id) 
     INNER JOIN finops.system_lookups.v_workspaces w 
       on (c.workspace_id=w.workspace_id)
-    GROUP BY jrt.cluster_id,c.usage_date, w.workspace_id, cl.cluster_name, w.workspace_name, cl.data_security_mode,cl.cluster_source;
-
+    GROUP BY ALL;
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_job_weighted_cost AS 
 SELECT 
