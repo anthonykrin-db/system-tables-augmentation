@@ -14,21 +14,13 @@ CREATE OR REPLACE VIEW finops.system_lookups.v_job_run_duration AS
     w.workspace_id, 
     w.workspace_name,
     jrt.cluster_id, 
-    cl.cluster_name,
-    cl.data_security_mode cluster_data_security_mode,
-    cl.cluster_source,
-    c.usage_date,
+    DATE(FROM_UNIXTIME(jrt.start_time / 1000)) usage_date,
     SUM(jrt.execution_duration) AS job_run_exec_duration
-    FROM finops.system_lookups.v_system_usage_cost c 
-    -- Filtering on clusters that have a billing record
-    INNER JOIN finops.system_lookups.v_job_runs_tasks jrt 
-      on (c.usage_metadata["cluster_id"]=jrt.cluster_id AND DATE(FROM_UNIXTIME(jrt.start_time / 1000)) = c.usage_date)
-    INNER JOIN finops.system_lookups.v_clusters cl
-      on (jrt.cluster_id=cl.cluster_id)
+    FROM  finops.system_lookups.v_job_runs_tasks jrt 
     INNER JOIN finops.system_lookups.v_job_runs jr 
       on (jr.run_id=jrt.run_id) 
     INNER JOIN finops.system_lookups.v_workspaces w 
-      on (c.workspace_id=w.workspace_id)
+      on (jrt.workspace_id=w.workspace_id)
     GROUP BY ALL;
 
 CREATE OR REPLACE VIEW finops.system_lookups.v_job_duration AS 
@@ -96,9 +88,11 @@ INNER JOIN finops.system_lookups.v_cluster_cost AS cluster_cost_duration
 ON (job_duration.cluster_id=cluster_cost_duration.cluster_id AND job_duration.usage_date=cluster_cost_duration.usage_date )
 GROUP BY ALL;
 
+--- v_job_run_attempt_weighted_cost
+
 CREATE OR REPLACE VIEW  finops.system_lookups.v_job_run_weighted_cost AS 
 SELECT 
-job_run_duration.*,
+job_run_duration.*,cluster_cost_duration.* except(cluster_id,usage_date,workspace_id),
 round(sum(job_run_duration.job_run_exec_duration) / 1000 /60,1) cluster_day_exec_duration_mins,
 round(min(cluster_cost_duration.day_cluster_est_infra_cost)*try_divide(sum(job_run_duration.job_run_exec_duration),min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as infra_cost,
 round(min(cluster_cost_duration.day_cluster_est_dbu_cost)*try_divide(sum(job_run_duration.job_run_exec_duration),min(cluster_cost_duration.day_cluster_task_exec_duration)),4) as dbu_cost,
@@ -110,7 +104,7 @@ ON (job_run_duration.cluster_id=cluster_cost_duration.cluster_id AND job_run_dur
 GROUP BY ALL;
 
 CREATE OR REPLACE VIEW  finops.system_lookups.v_job_creator_weighted_cost AS 
-SELECT creator_duration.*,
+SELECT creator_duration.*,cluster_cost_duration.* except(cluster_id,usage_date,workspace_id),
 -- (sum of creator task duration) / (total of task duration on cluster)
 -- sum(creator_duration.day_cluster_creator_task_exec_duration) creator_exec_duration,
 -- min(cluster_cost_duration.day_cluster_task_exec_duration) cluster_exec_duration,
