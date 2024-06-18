@@ -109,7 +109,7 @@ query_history_start_time = lookup_last_record_value(
 # Incremental record check
 target_table_path = f"{DATABASE_NAME}.{SQL_COLUMNS_TABLE_NAME}"
 
-original_statement_sql = f"SELECT statement_id, start_time, end_time, statement_text FROM finops.system_query.history where statement_type = 'SELECT' AND 1=1 ORDER BY start_time ASC LIMIT {limit}"
+original_statement_sql = f"SELECT statement_id, executed_by, start_time, end_time, statement_text FROM finops.system_query.history where statement_type = 'SELECT' AND 1=1 ORDER BY start_time ASC LIMIT {limit}"
 
 
 # Create a schema for the parsed statement rows
