@@ -33,3 +33,4 @@ FROM  finops.system_lookups.v_system_usage_cost c
 INNER JOIN finops.system_lookups.v_workspaces w ON (c.workspace_id=w.workspace_id)
 INNER JOIN finops.system_lookups.v_clusters cl ON (cl.cluster_id=c.usage_metadata["cluster_id"])
 GROUP BY c.workspace_id, w.workspace_name, c. usage_date, c.sku_name,cl.cluster_id, cl.cluster_name;
+

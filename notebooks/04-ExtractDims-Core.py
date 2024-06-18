@@ -31,7 +31,7 @@ for ENDPOINT_URL, cred in URL_CREDS:
     print("No jobs")
     continue
 
-  while response_json["jobs"]:
+  while response_json is not None and "jobs" in response_json:
     jobs_json = response_json["jobs"]
     for job_json in jobs_json:
       job_json["workspace_id"]=workspace_id

@@ -38,6 +38,33 @@ parser = spark._jvm.SqlStatementParser()
 
 sql = "with y as (SELECT * FROM x.tbl_a) select a,b,c,DATETOSTRING(date_attr_name,'mm/dd/yyyy') from y"
 
+sql = """select cs.DeviceId,
+cs.MessageDateTime,
+cs.HeartRate,
+cs.RespiratoryRate,
+cs.BloodPressureSystolic,
+cs.BloodPressureDiastolic,
+concat_ws('\\',string(int(cs.BloodPressureSystolic)),string(int(cs.BloodPressureDiastolic))) as BloodPressure,
+cs.BodyTemperature,
+cs.HeartRateVariability
+from iomt_demo.charts_silver cs
+where cs.DeviceId = '1qsi9p8t5l2'
+and cs.HeartRate is not null
+and cs.MessageDateHour = date_format(current_timestamp(), 'yyyy-MM-dd HH:00:00')
+order by cs.MessageDateTime desc LIMIT 1000"""
+
+sql = """select
+  StockCode,
+  Description,
+  sum(quantity) as Total_Qty
+from
+  order_transactions_silver
+group by
+  StockCode,
+  Description
+order by
+  Total_Qty desc limit 10"""
+
 result = parser.parseTokens(sql)
 
 if result.isSuccess() is True:
@@ -54,52 +81,89 @@ else: print("Error: " + result.getErrMsg())
 # COMMAND ----------
 
 # DBTITLE 1,Parse query history
+from datetime import datetime
+
+
 # Assuming a workaround or placeholder for the SQL parsing logic
 def parse_sql(sql):
     tokens = []
     result = parser.parseTokens(sql)
-    if result.isSuccess() is True:
-        print("Success: " + str(result.isSuccess())) 
-        for token in result.getTokens(): 
+    if result.isSuccess():
+        print("Success: " + str(result.isSuccess()))
+        for token in result.getTokens():
             # Placeholder parsing logic
             tokens.append(token)  # Simplified example
+    else:
+        print(f"Unable to parse: {result}")
     return tokens
 
-# Simplified UDF usage assuming parse_sql is adjusted as suggested
 
+limit = 1000
+complete = False
 
+# SQL_COLUMNS_TABLE_NAME
+query_history_start_time = lookup_last_record_value(
+    DATABASE_NAME, SQL_COLUMNS_TABLE_NAME, "start_time"
+)
 
 # Incremental record check
-query_history_end_time = lookup_last_record_value (DATABASE_NAME, f"{SYSTEM_TABLE_SCHEMA_PREFIX}.{SQL_COLUMNS_TABLE _NAME}", "event_time")
-if query_history_end_time is None:
-    print("Unable to get last query parsed. Getting all queries.")
-else:
-    print(f"Got last query parsed: {}")
+target_table_path = f"{DATABASE_NAME}.{SQL_COLUMNS_TABLE_NAME}"
 
- query_statement_sql=f"SELECT * FROM
- (source_table_path}"
- else:
- print("Parsed query statement history.")
- query_statement_sql=f"SELECT * FROM
- {source_table_path) WHERE end_time>
- (query_history_end_time?"
-print (f"query_statement_sql:
-{query_statement_sql}")
-# Statement
-# finops.system_query.history.statement_text
-query_statements_df=spark.sql
-(query_statement_sql+" LIMIT 100"')
-# Apply the function parse_sql to the
-"statement_text" column in query_statements_df
-parse_sql_udf = F.udf (parse_sql, ArrayType
--(StringType()))
-query_statements_df = query_statements_df.
-withColumn("parsed_tokens", parse_sql_udf(F.
- col("statement_text") ))
- display(query_statements_df)
+original_statement_sql = f"SELECT statement_id, start_time, end_time, statement_text FROM finops.system_query.history where statement_type = 'SELECT' AND 1=1 ORDER BY start_time ASC LIMIT {limit}"
 
 
-parse_sql_udf = udf(parse_sql, ArrayType(StringType()))
-query_statements_df = query_statements_df.withColumn("parsed_tokens", parse_sql_udf(col("statement_text")))
+# Create a schema for the parsed statement rows
+schema = StructType(
+    [
+        StructField("statement_id", StringType(), nullable=False),
+        StructField("executed_by", StringType(), nullable=False),
+        StructField("start_time", StringType(), nullable=False),
+        StructField("end_time", StringType(), nullable=False),
+        StructField("schema", StringType(), nullable=True),
+        StructField("table", StringType(), nullable=True),
+        StructField("column", StringType(), nullable=True),
+    ]
+)
 
-display(query_statements_df)
+if query_history_start_time is None:
+    query_history_start_time = datetime.strptime("1970-01-01", "%Y-%m-%d")
+
+while complete is False:
+    query_statement_sql = original_statement_sql.replace(
+        "1=1", f" start_time>'{query_history_start_time}'"
+    )
+    print(f"query_statement_sql: {query_statement_sql}")
+    query_statements_df = spark.sql(query_statement_sql)
+    recordCount = query_statements_df.count()
+    print(f"start_time: {query_history_start_time}, records: {recordCount}")
+    if recordCount < limit:
+        complete = True
+
+    query_statement_rows = query_statements_df.collect()
+
+    parsed_statement_rows = []
+    for row in query_statement_rows:
+        statement_id = row["statement_id"]
+        start_time = row["start_time"]
+        end_time = row["end_time"]
+        statement_text = row["statement_text"]
+        executed_by = row["executed_by"]
+        tokens = parse_sql(statement_text)
+        for token in tokens:
+            schema = str(token.getSchema())
+            table = str(token.getTable())
+            column = str(token.getColumn())
+            # Create a row from statement_id, start_time, end_time, statement_text, schema, table, column
+            parsed_row = (statement_id, executed_by,start_time, end_time, schema, table, column)
+            # Add to parsed_statement_rows
+            parsed_statement_rows.append(parsed_row)
+
+        # increment start time
+        query_history_start_time = start_time
+
+    # Create a DataFrame from parsed_statement_rows
+    parsed_df = spark.createDataFrame(parsed_statement_rows, schema)
+    parsed_df.show()
+    if parsed_df.count()>0:
+        parsed_df.dropDuplicates().write.format("delta").option("mergeSchema", "true").mode("append").saveAsTable(target_table_path)
+

@@ -25,7 +25,7 @@ for ENDPOINT_URL, cred in URL_CREDS:
     raise Exception(response.text)
   response_json = response.json()
   #print(response_json)
-  while response_json["statuses"]:
+  while response_json is not None and "statuses" in response_json:
     dlt_json_pools = response_json["statuses"]
     for dlt_json_pool in dlt_json_pools:
       dlt_json_pool["workspace_id"]=workspace_id
@@ -72,11 +72,11 @@ for ENDPOINT_URL, cred in URL_CREDS:
   if response.status_code != 200:
     raise Exception(response.text)
   responses_json = response.json()
-
-  instance_pool_jsons = responses_json["instance_pools"]
-  for instance_pool_json in instance_pool_jsons:
-    instance_pool_json["workspace_id"]=workspace_id
-  data.append(instance_pool_jsons)
+  if "instance_pools" in responses_json:
+    instance_pool_jsons = responses_json["instance_pools"]
+    for instance_pool_json in instance_pool_jsons:
+      instance_pool_json["workspace_id"]=workspace_id
+    data.append(instance_pool_jsons)
 
 commmit_data_array(data, [], [], DATABASE_NAME, INSTANCE_POOLS_TABLE_NAME)
 
