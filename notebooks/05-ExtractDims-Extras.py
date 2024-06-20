@@ -207,13 +207,18 @@ for ENDPOINT_URL, cred in URL_CREDS:
         print("Dir name: {}".format(dir_name))
         if dir_name == "/Users":
           user_dir_json = get_path_objs(dir_name,workspace_objects_incremental_url,workspace_id,1)
-          for user_dir in user_dir_json:
-            print("User path: {}".format(user_dir["path"]))
-            user_objsn = get_path_objs(user_dir["path"],workspace_objects_incremental_url,workspace_id)
-            all_objs.append(user_objsn)
+          try:
+            if user_dir_json is not None:
+              for user_dir in user_dir_json:
+                print("User path: {}".format(user_dir["path"]))
+                user_objsn = get_path_objs(user_dir["path"],workspace_objects_incremental_url,workspace_id)
+                all_objs.append(user_objsn)
+          except Exception as e:
+            print("Exception found: ", e)
+            
         else:
           other_dir_objs = get_path_objs(dir_name,workspace_objects_incremental_url,workspace_id)
           all_objs.append(other_dir_objs)
-
-  append_merge( all_objs,[],[], DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME, "object_id",True)
+  if len(all_objs)>0:
+    append_merge( all_objs,[],[], DATABASE_NAME, WORKSPACE_OBJECTS_TABLE_NAME, "object_id",True)
 

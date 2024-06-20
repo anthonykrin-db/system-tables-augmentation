@@ -38,33 +38,6 @@ parser = spark._jvm.SqlStatementParser()
 
 sql = "with y as (SELECT * FROM x.tbl_a) select a,b,c,DATETOSTRING(date_attr_name,'mm/dd/yyyy') from y"
 
-sql = """select cs.DeviceId,
-cs.MessageDateTime,
-cs.HeartRate,
-cs.RespiratoryRate,
-cs.BloodPressureSystolic,
-cs.BloodPressureDiastolic,
-concat_ws('\\',string(int(cs.BloodPressureSystolic)),string(int(cs.BloodPressureDiastolic))) as BloodPressure,
-cs.BodyTemperature,
-cs.HeartRateVariability
-from iomt_demo.charts_silver cs
-where cs.DeviceId = '1qsi9p8t5l2'
-and cs.HeartRate is not null
-and cs.MessageDateHour = date_format(current_timestamp(), 'yyyy-MM-dd HH:00:00')
-order by cs.MessageDateTime desc LIMIT 1000"""
-
-sql = """select
-  StockCode,
-  Description,
-  sum(quantity) as Total_Qty
-from
-  order_transactions_silver
-group by
-  StockCode,
-  Description
-order by
-  Total_Qty desc limit 10"""
-
 result = parser.parseTokens(sql)
 
 if result.isSuccess() is True:
