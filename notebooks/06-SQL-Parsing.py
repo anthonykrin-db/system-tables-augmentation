@@ -55,14 +55,14 @@ else: print("Error: " + result.getErrMsg())
 
 # DBTITLE 1,Parse query history
 from datetime import datetime
-
+from pyspark.sql.types import StructType, StructField, StringType, DateType,TimestampType
 
 # Assuming a workaround or placeholder for the SQL parsing logic
 def parse_sql(sql):
     tokens = []
     result = parser.parseTokens(sql)
     if result.isSuccess():
-        print("Success: " + str(result.isSuccess()))
+        #print("Success: " + str(result.isSuccess()))
         for token in result.getTokens():
             # Placeholder parsing logic
             tokens.append(token)  # Simplified example
@@ -71,7 +71,7 @@ def parse_sql(sql):
     return tokens
 
 
-limit = 1000
+limit = 100
 complete = False
 
 # SQL_COLUMNS_TABLE_NAME
@@ -86,12 +86,12 @@ original_statement_sql = f"SELECT statement_id, executed_by, start_time, end_tim
 
 
 # Create a schema for the parsed statement rows
-schema = StructType(
+parsed_sql_schema = StructType(
     [
         StructField("statement_id", StringType(), nullable=False),
         StructField("executed_by", StringType(), nullable=False),
-        StructField("start_time", StringType(), nullable=False),
-        StructField("end_time", StringType(), nullable=False),
+        StructField("start_time", TimestampType(), nullable=False),
+        StructField("end_time", TimestampType(), nullable=False),
         StructField("schema", StringType(), nullable=True),
         StructField("table", StringType(), nullable=True),
         StructField("column", StringType(), nullable=True),
@@ -135,7 +135,7 @@ while complete is False:
         query_history_start_time = start_time
 
     # Create a DataFrame from parsed_statement_rows
-    parsed_df = spark.createDataFrame(parsed_statement_rows, schema)
+    parsed_df = spark.createDataFrame(parsed_statement_rows, parsed_sql_schema)
     parsed_df.show()
     if parsed_df.count()>0:
         parsed_df.dropDuplicates().write.format("delta").option("mergeSchema", "true").mode("append").saveAsTable(target_table_path)
