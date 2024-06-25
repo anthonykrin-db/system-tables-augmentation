@@ -16,6 +16,7 @@ The intent of this project is facilitate decommissioning the heavy-weight Overwa
 `notebooks/03-ArchiveSystemTables`<br>
 `notebooks/04-ExtractDims-Core`<br>
 `notebooks/05-ExtractDims-Extras`<br>
+`notebooks/06-SQL-Parsing`<br>
 `notebooks/10-UpdateViews`<p>
 
 </li>
