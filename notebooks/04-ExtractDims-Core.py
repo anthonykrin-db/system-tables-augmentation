@@ -7,10 +7,6 @@
 
 # COMMAND ----------
 
-# MAGIC %run ./02-Initialization
-
-# COMMAND ----------
-
 # DBTITLE 1,Jobs
 data=[]
 count=0

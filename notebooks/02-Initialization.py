@@ -1,17 +1,14 @@
 # Databricks notebook source
+# MAGIC %md
+# MAGIC ## Run this ONCE after changing configurations
+
+# COMMAND ----------
+
 # MAGIC %run ./00-Config
 
 # COMMAND ----------
 
 # MAGIC %run ./01-Functions
-
-# COMMAND ----------
-
-# DBTITLE 1,Get Url Credentials
-URL_CREDS = get_api_endpoints()
-for url, cred in URL_CREDS:
-  auth_header = {"Authorization" : "Bearer " + cred}
-  print("Workspace URL: {}, auth: {}".format(url,cred))
 
 # COMMAND ----------
 

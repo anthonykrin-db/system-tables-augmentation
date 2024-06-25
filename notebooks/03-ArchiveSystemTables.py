@@ -7,10 +7,6 @@
 
 # COMMAND ----------
 
-# MAGIC %run ./02-Initialization
-
-# COMMAND ----------
-
 # DBTITLE 1,Append since last insert tables
 
 for source_table_path, increment_column in SYSTEM_TABLES_INCREMENT.items():

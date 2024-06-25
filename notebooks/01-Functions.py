@@ -46,6 +46,14 @@ def get_api_endpoints():
 
 # COMMAND ----------
 
+# DBTITLE 1,Get URL creds
+URL_CREDS = get_api_endpoints()
+for url, cred in URL_CREDS:
+  auth_header = {"Authorization" : "Bearer " + cred}
+  print("Workspace URL: {}, auth: {}".format(url,cred))
+
+# COMMAND ----------
+
 def parse_workspaceid_from_api_endpoint_url(url):
     workspace_id = re.search(r"adb-(\d+)", url).group(1)
     return workspace_id

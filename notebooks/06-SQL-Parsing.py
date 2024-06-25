@@ -7,10 +7,6 @@
 
 # COMMAND ----------
 
-# MAGIC %run ./02-Initialization
-
-# COMMAND ----------
-
 # MAGIC %md
 # MAGIC ### Include jars
 # MAGIC Be sure to include jars in cluster condfiguration
