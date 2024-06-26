@@ -11,6 +11,9 @@ The intent of this project is facilitate decommissioning the heavy-weight Overwa
 ## Usage
 <ol>
 <li>Please set configuration found in <b>00_Config</b></li>
+<li>Run initialization after configuration changes<br>
+`notebooks/02-Initialization`<br>
+</li>
 <li>Create a Workflow that runds these notebooks in the following order, not more than once per hour:<br>
 
 `notebooks/03-ArchiveSystemTables`<br>

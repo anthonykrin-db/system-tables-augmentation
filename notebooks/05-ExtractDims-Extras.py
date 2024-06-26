@@ -160,8 +160,13 @@ def get_path_objs(path,url, workspace_id, depth=-1):
 
   response = requests.get(url, headers=AUTH_HEADER, params=params)
 
-  if response.status_code != 200:
-      raise Exception(response.text)
+  try:
+    if response.status_code != 200:
+        raise Exception(response.text)
+
+  except Exception as e:
+    print("Exception found: ", e)
+    return []
     
   response_json = response.json()
   json = []

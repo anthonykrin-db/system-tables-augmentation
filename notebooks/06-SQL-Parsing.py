@@ -56,14 +56,19 @@ from pyspark.sql.types import StructType, StructField, StringType, DateType,Time
 # Assuming a workaround or placeholder for the SQL parsing logic
 def parse_sql(sql):
     tokens = []
-    result = parser.parseTokens(sql)
-    if result.isSuccess():
-        #print("Success: " + str(result.isSuccess()))
-        for token in result.getTokens():
-            # Placeholder parsing logic
-            tokens.append(token)  # Simplified example
-    else:
-        print(f"Unable to parse: {result}")
+    if len(sql)==0:
+        return tokens
+    try:
+        result = parser.parseTokens(sql)
+        if result.isSuccess():
+            #print("Success: " + str(result.isSuccess()))
+            for token in result.getTokens():
+                # Placeholder parsing logic
+                tokens.append(token)  # Simplified example
+        else:
+            print(f"Unable to parse: {result}")
+    except Exception as e:
+        print(f"Exception parsing {sql}: {e}")
     return tokens
 
 
@@ -88,9 +93,9 @@ parsed_sql_schema = StructType(
         StructField("executed_by", StringType(), nullable=False),
         StructField("start_time", TimestampType(), nullable=False),
         StructField("end_time", TimestampType(), nullable=False),
-        StructField("schema", StringType(), nullable=True),
-        StructField("table", StringType(), nullable=True),
-        StructField("column", StringType(), nullable=True),
+        StructField("schema_name", StringType(), nullable=True),
+        StructField("table_name", StringType(), nullable=True),
+        StructField("column_name", StringType(), nullable=True),
     ]
 )
 
