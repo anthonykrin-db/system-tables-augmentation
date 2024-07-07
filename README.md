@@ -11,6 +11,9 @@ The intent of this project is facilitate decommissioning the heavy-weight Overwa
 ## Usage
 <ol>
 <li>Please set configuration found in <b>00_Config</b></li>
+<li>Copy sql parser lib to a volume and include in cluster initialization.<br>
+`lib/sql_parser_excl_gudu_v1.0.jar`<br>
+</li>
 <li>Run initialization after configuration changes<br>
 `notebooks/02-Initialization`<br>
 </li>
