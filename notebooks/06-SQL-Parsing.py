@@ -13,7 +13,8 @@
 # MAGIC
 # MAGIC ```
 # MAGIC /Volumes/finops/system_lookups/libs/gudusoft.gsqlparser-2.8.5.8.jar
-# MAGIC /Volumes/finops/system_lookups/libs/sql_parser_excl_gudu_v01.jar```
+# MAGIC /Volumes/finops/system_lookups/libs/sql_parser_excl_gudu_v1.0.jar```
+# MAGIC
 
 # COMMAND ----------
 
@@ -40,6 +41,7 @@ if result.isSuccess() is True:
 
   print("Success: " + str(result.isSuccess())) 
   for token in result.getTokens(): 
+    print("Catalog: " + str(token.getCatalog())) 
     print("Schema: " + str(token.getSchema())) 
     print("Table: " + str(token.getTable())) 
     print("Column: " + str(token.getColumn())) 
@@ -93,6 +95,7 @@ parsed_sql_schema = StructType(
         StructField("executed_by", StringType(), nullable=False),
         StructField("start_time", TimestampType(), nullable=False),
         StructField("end_time", TimestampType(), nullable=False),
+        StructField("catalog_name", StringType(), nullable=True),
         StructField("schema_name", StringType(), nullable=True),
         StructField("table_name", StringType(), nullable=True),
         StructField("column_name", StringType(), nullable=True),
@@ -124,11 +127,12 @@ while complete is False:
         executed_by = row["executed_by"]
         tokens = parse_sql(statement_text)
         for token in tokens:
+            catalog = str(token.getCatalog())
             schema = str(token.getSchema())
             table = str(token.getTable())
             column = str(token.getColumn())
             # Create a row from statement_id, start_time, end_time, statement_text, schema, table, column
-            parsed_row = (statement_id, executed_by,start_time, end_time, schema, table, column)
+            parsed_row = (statement_id, executed_by,start_time, end_time, catalog, schema, table, column)
             # Add to parsed_statement_rows
             parsed_statement_rows.append(parsed_row)
 
