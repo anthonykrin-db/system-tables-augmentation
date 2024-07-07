@@ -14,6 +14,8 @@ The intent of this project is facilitate decommissioning the heavy-weight Overwa
 <li>Copy sql parser lib to a volume and include in cluster initialization.<br>
 `lib/sql_parser_excl_gudu_v1.0.jar`<br>
 </li>
+<li>Order and include in system initialization, a copy of gudusoft SQL parser (databricks dialect)<br>
+<a href="https://www.gudusoft.com/general-sql-parser-order-page-stripe-1220/">General SQL Parse order page</a></li>
 <li>Run initialization after configuration changes<br>
 `notebooks/02-Initialization`<br>
 </li>
