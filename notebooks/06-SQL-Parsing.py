@@ -150,7 +150,7 @@ while complete is False:
 
     for row in query_statement_rows:
         
-        sql_statements.append(statement_text)
+        sql_statements.append(row["statement_text"])
         statement_metadata.append({
             "statement_id": row["statement_id"],
             "executed_by": row["executed_by"],
@@ -160,7 +160,7 @@ while complete is False:
         })
 
         # Update query_history_start_time
-        query_history_start_time = start_time
+        query_history_start_time = row["start_time"]
 
     # Parse all SQL statements at once
     all_tokens = parse_sql_statements(sql_statements)
